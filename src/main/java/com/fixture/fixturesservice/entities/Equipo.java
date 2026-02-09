@@ -56,9 +56,14 @@ public class Equipo {
     }
     public Equipo memento() {
         Equipo copia = new Equipo();
-        copia.ultimasConsecutivas = this.ultimasConsecutivas;
-        copia.usoQuiebre = this.usoQuiebre;
-        copia.totalPartidosLocal = this.totalPartidosLocal;
+        copia.setUltimasConsecutivas(this.ultimasConsecutivas);
+        copia.setUsoQuiebre(this.usoQuiebre);
+        copia.setTotalPartidosLocal(this.totalPartidosLocal);
+        copia.setId(this.id);
+        copia.setJuegaA(this.juegaA);
+        copia.setSede(this.sede);
+        copia.setNombre(this.nombre);
+        copia.setCategorias(this.categorias);
         return copia;
     }
 
@@ -67,15 +72,6 @@ public class Equipo {
         this.usoQuiebre = e.isUsoQuiebre();
         this.totalPartidosLocal = e.getTotalPartidosLocal();
     }
-    public void actualizarEstado(boolean seraLocal) {
-        if (seraLocal) {
-            if (this.ultimasConsecutivas == 1) this.usoQuiebre = true;
-            this.ultimasConsecutivas = 1;
-            this.totalPartidosLocal++;
-        } else {
-            if (this.ultimasConsecutivas == -1) this.usoQuiebre = true;
-            this.ultimasConsecutivas = -1;
-        }
-    }
+
 
 }

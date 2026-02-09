@@ -15,11 +15,14 @@ public class Cancha {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     private String name;
+    private boolean compartida;
 
     public Cancha(){
 
     }
     public Cancha(String name) {
         this.name = name;
+        this.compartida = compartida;
     }
+
 }

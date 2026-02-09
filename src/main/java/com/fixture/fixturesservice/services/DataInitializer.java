@@ -32,8 +32,6 @@ public class DataInitializer {
         @PostConstruct
         @Transactional
         public void initDesdeJson() throws IOException {
-            equipoRepo.deleteAll();
-            canchaRepository.deleteAll();
             ObjectMapper mapper = new ObjectMapper();
             InputStream is = new ClassPathResource("data/equipos.json").getInputStream();
 
@@ -44,6 +42,11 @@ public class DataInitializer {
                 Cancha cancha = (Cancha) canchaRepository
                         .findByName(ec.estadioLocal)
                         .orElseGet(() -> canchaRepository.save(new Cancha(ec.estadioLocal)));
+
+                if(equipoRepo.existsBySede(cancha)) {
+                    cancha.setCompartida(true);
+                    canchaRepository.save(cancha);
+                }
 
                 Equipo equipo = new Equipo();
                 equipo.setNombre(ec.nombre);

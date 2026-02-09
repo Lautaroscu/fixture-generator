@@ -239,50 +239,6 @@
       ]
     },
     {
-      "nombre": "Ferrocarril Sud (azul)",
-      "divisionMayor": "B",
-      "categorias": {
-        "primera": false,
-        "reserva": false,
-        "quinta": true,
-        "sexta": true,
-        "septima": true,
-        "octava": true,
-        "novena": true,
-        "decima": true,
-        "undecima": true
-      },
-      "estadioPropio": true,
-      "estadioLocal": "Damaso Latasa",
-      "jerarquia": 12,
-      "restricciones": [
-        "herederos (inferiores) va cruzado con deportivo tandil en cancha figeroa/ mismo fin de semana que defensores del cerro (mayores domingo)",
-        "Comparte cancha con Ferrocarril Sud: cuando uno es local el otro es visitante"
-      ]
-    },
-    {
-      "nombre": "Herederos",
-      "divisionMayor": "B",
-      "categorias": {
-        "primera": false,
-        "reserva": false,
-        "quinta": false,
-        "sexta": true,
-        "septima": false,
-        "octava": true,
-        "novena": true,
-        "decima": true,
-        "undecima": true
-      },
-      "estadioPropio": false,
-      "estadioLocal": "Figueroa",
-      "jerarquia": 0,
-      "restricciones": [
-        "juventud unida cruzado con union y progreso en la florida/ ese mismo dia algunas categorías van al sintetico",
-        "Comparte cancha con Deportivo Tandil, Defensores del Cerro: cuando uno es local el otro es visitante"
-      ]
-    },
-    {
       "nombre": "Deportivo Tandil",
       "divisionMayor": "A",
       "categorias": {
@@ -563,7 +519,7 @@
         "undecima": true
       },
       "estadioPropio": true,
-      "estadioLocal": "",
+      "estadioLocal": "SAN LORENZO Stadium",
       "jerarquia": 0,
       "restricciones": [
         "Primera A 12 equipos ida y vuelta"
@@ -584,7 +540,7 @@
         "undecima": true
       },
       "estadioPropio": true,
-      "estadioLocal": "",
+      "estadioLocal": "BOTAFOGO F.C Stadium",
       "jerarquia": 0,
       "restricciones": [
         "Primera B 14 equipos ida y vuelta"

@@ -15,7 +15,7 @@ public class FixtureMapper {
                 .map(FixtureMapper::toPartidoDTO)
                 .toList();
 
-        return new FechaDTO(fecha.getNroFecha(), partidos);
+        return new FechaDTO(fecha.getNroFecha(), partidos , fecha.getCategoria() , fecha.getLiga());
     }
 
     private static PartidoDTO toPartidoDTO(Partido p) {

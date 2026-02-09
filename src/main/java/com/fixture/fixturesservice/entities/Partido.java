@@ -25,5 +25,23 @@ public class Partido {
 
     @ManyToOne
     private Fecha fecha;
+
+    public Partido memento() {
+        Partido copia = new Partido();
+        copia.setId(this.getId());
+        copia.setLocal(this.getLocal());
+        copia.visitante = this.getVisitante();
+        copia.cancha = this.getCancha();
+        copia.fecha = this.getFecha();
+        return copia;
+    }
+
+    public void restore(Partido pm1) {
+        this.id = pm1.getId();
+        this.local = pm1.getLocal();
+        this.visitante = pm1.getVisitante();
+        this.cancha = pm1.getCancha();
+        this.fecha = pm1.getFecha();
+    }
 }
 
