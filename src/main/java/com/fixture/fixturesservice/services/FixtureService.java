@@ -88,13 +88,12 @@ public class FixtureService {
         boolean e1PrefiereLocal = estadoFecha.getEstado(e1.getId()).getUltimasConsecutivas() < 0;
 
         if (e1PrefiereLocal) {
-            probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
-            probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
+            if (probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx)) return true;
+            return probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
         } else {
-            probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
-            probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
+            if (probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx)) return true;
+            return probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
         }
-        return false;
     }
 
     private boolean probarOpcion(Equipo loc, Equipo vis, Partido p, EstadoFecha estado, List<Fecha> fA, List<Fecha> fB, List<Partido> pts, int pIdx, int fIdx) {
@@ -103,7 +102,10 @@ public class FixtureService {
             Partido pm1 = p.memento();
 
             aplicarLocalia(loc, vis, p, estado);
-            backtrackingPartidos(fA, fB, pts, pIdx + 1, fIdx, estado);
+
+            boolean exito = backtrackingPartidos(fA, fB, pts, pIdx + 1, fIdx, estado);
+
+            if (exito) return true;
 
             estado.restore(efm);
             p.restore(pm1);

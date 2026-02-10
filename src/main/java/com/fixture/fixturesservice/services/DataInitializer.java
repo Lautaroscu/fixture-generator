@@ -32,6 +32,8 @@ public class DataInitializer {
         @PostConstruct
         @Transactional
         public void initDesdeJson() throws IOException {
+            equipoRepo.deleteAll();
+            canchaRepository.deleteAll();
             ObjectMapper mapper = new ObjectMapper();
             InputStream is = new ClassPathResource("data/equipos.json").getInputStream();
 
