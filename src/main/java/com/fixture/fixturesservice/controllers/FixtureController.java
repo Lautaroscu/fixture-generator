@@ -4,10 +4,12 @@ import com.fixture.fixturesservice.DTOS.FechaDTO;
 import com.fixture.fixturesservice.DTOS.ResponseDTO;
 import com.fixture.fixturesservice.entities.Equipo;
 import com.fixture.fixturesservice.enums.Liga;
+import com.fixture.fixturesservice.services.DataInitializer;
 import com.fixture.fixturesservice.services.ExcelService;
 import com.fixture.fixturesservice.services.FixtureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +27,8 @@ public class FixtureController {
     private FixtureService fixtureService;
     @Autowired
     private ExcelService excelService;
+    @Autowired
+    private DataInitializer dataInitializer;
 
 
     @GetMapping("/generar")
@@ -49,4 +53,18 @@ public class FixtureController {
                 .body(excelContent);
     }
 
+
+
+    @GetMapping("/update-db")
+    public ResponseEntity<ResponseDTO> updateDb() throws IOException {
+        try {
+            dataInitializer.initDesdeJson();
+            ResponseDTO responseDTO = new ResponseDTO("Base cargada correctamente" , true);
+            return ResponseEntity.ok(responseDTO);
+        }catch (IOException e) {
+            ResponseDTO responseDTO = new ResponseDTO(e.getMessage() , false);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseDTO);
+        }
+
+    }
 }

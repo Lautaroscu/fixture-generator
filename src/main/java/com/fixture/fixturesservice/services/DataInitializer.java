@@ -29,7 +29,6 @@ public class DataInitializer {
     @Autowired
     private CanchaRepository canchaRepository;
 
-        @PostConstruct
         @Transactional
         public void initDesdeJson() throws IOException {
             equipoRepo.deleteAll();
