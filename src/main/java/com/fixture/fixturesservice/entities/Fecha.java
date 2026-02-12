@@ -19,7 +19,7 @@ public class Fecha {
 
     private int nroFecha;
 
-    @OneToMany(mappedBy = "fecha", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "fecha", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Partido> partidos = new ArrayList<>();
     @Enumerated(EnumType.STRING)
     private Categoria categoria;
@@ -49,5 +49,9 @@ public class Fecha {
         }
         sb.append("--------------------------------------------------\n");
         return sb.toString();
+    }
+    public void addPartido(Partido partido) {
+        partidos.add(partido);
+        partido.setFecha(this);
     }
 }
