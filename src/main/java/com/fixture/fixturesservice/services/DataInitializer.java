@@ -7,6 +7,8 @@ import com.fixture.fixturesservice.entities.Equipo;
 import com.fixture.fixturesservice.enums.Categoria;
 import com.fixture.fixturesservice.repositories.CanchaRepository;
 import com.fixture.fixturesservice.repositories.EquipoRepository;
+import com.fixture.fixturesservice.repositories.FechaRepository;
+import com.fixture.fixturesservice.repositories.PartidoRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,10 +31,15 @@ public class DataInitializer {
     @Autowired
     private CanchaRepository canchaRepository;
 
+    @Autowired
+    private PartidoRepository partidoRepository;
+    @Autowired
+    private FechaRepository fechaRepository;
+
         @Transactional
         public void initDesdeJson() throws IOException {
-            equipoRepo.deleteAll();
-            canchaRepository.deleteAll();
+
+            this.deleteAll();
             ObjectMapper mapper = new ObjectMapper();
             InputStream is = new ClassPathResource("data/equipos.json").getInputStream();
 
@@ -65,4 +72,10 @@ public class DataInitializer {
                 equipoRepo.save(equipo);
             }
         }
+    private void deleteAll(){
+        partidoRepository.deleteAll();
+        fechaRepository.deleteAll();
+        equipoRepo.deleteAll();
+        canchaRepository.deleteAll();
+    }
 }

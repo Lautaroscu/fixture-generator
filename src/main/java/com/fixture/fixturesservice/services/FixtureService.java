@@ -6,6 +6,7 @@ import com.fixture.fixturesservice.entities.*;
 import com.fixture.fixturesservice.enums.*;
 import com.fixture.fixturesservice.mappers.FixtureMapper;
 import com.fixture.fixturesservice.repositories.*;
+import jakarta.transaction.Transactional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,20 +21,14 @@ public class FixtureService {
     @Autowired
     private FechaRepository fechaRepository;
 
-    private List<Fecha> mejorSolucionA;
-    private List<Fecha> mejorSolucionB;
-    private int menorCantidadQuiebres = Integer.MAX_VALUE;
-    private long tiempoLimite;
-
+    @Transactional
     public ResponseDTO generar() {
+
         fechaRepository.deleteAll();
+        GeneracionContexto ctx = new GeneracionContexto(15000);
         List<Equipo> equiposA = equipoRepository.findAllByJuegaA(true);
         List<Equipo> equiposB = equipoRepository.findAllByJuegaA(false);
 
-        this.mejorSolucionA = null;
-        this.mejorSolucionB = null;
-        this.menorCantidadQuiebres = Integer.MAX_VALUE;
-        this.tiempoLimite = System.currentTimeMillis() + 10000; // 10 segundos
 
         List<Fecha> fechasA = generarEsqueletoRobin(equiposA, Liga.A);
         List<Fecha> fechasB = generarEsqueletoRobin(equiposB, Liga.B);
@@ -41,44 +36,44 @@ public class FixtureService {
         EstadoFecha historialInicial = new EstadoFecha();
         inicializarHistorial(historialInicial, equiposA, equiposB);
 
-        resolverPartidosFecha(fechasA, fechasB, 0, historialInicial);
+        resolverPartidosFecha(fechasA, fechasB, 0, historialInicial , ctx);
 
-        if (mejorSolucionA != null) {
-            persistirFixture(mejorSolucionA);
-            persistirFixture(mejorSolucionB);
-            return new ResponseDTO("Fixture optimizado con " + menorCantidadQuiebres + " quiebres.", true);
+        if (ctx.mejorSolucionA != null) {
+            persistirFixture(ctx.mejorSolucionA);
+            persistirFixture(ctx.mejorSolucionB);
+            return new ResponseDTO("Fixture optimizado con " + ctx.menorQuiebres + " quiebres.", true);
         }
         return new ResponseDTO("No se pudo generar un fixture válido.", false);
     }
 
-    private boolean resolverPartidosFecha(List<Fecha> fechasA, List<Fecha> fechasB, int fIdX, EstadoFecha estadoGlobal) {
+    private boolean resolverPartidosFecha(List<Fecha> fechasA, List<Fecha> fechasB, int fIdX, EstadoFecha estadoGlobal , GeneracionContexto ctx) {
         if (fIdX >= fechasA.size() && fIdX >= fechasB.size()) {
             int quiebresActuales = calcularPenalizacion(fechasA) + calcularPenalizacion(fechasB);
 
-            if (quiebresActuales < menorCantidadQuiebres) {
-                menorCantidadQuiebres = quiebresActuales;
-                mejorSolucionA = clonarFechas(fechasA);
-                mejorSolucionB = clonarFechas(fechasB);
+            if (quiebresActuales < ctx.menorQuiebres) {
+                ctx.menorQuiebres = quiebresActuales;
+                ctx.mejorSolucionA = clonarFechas(fechasA);
+                ctx.mejorSolucionB = clonarFechas(fechasB);
             }
             return false;
         }
 
-        if (System.currentTimeMillis() > tiempoLimite) return false;
+        if (System.currentTimeMillis() > ctx.fin) return false;
 
         EstadoFecha snapshotSeguridad = estadoGlobal.snapshot();
         estadoGlobal.getSedesUsadas().clear();
 
         List<Partido> partidosDelDia = recolectarPartidos(fechasA, fechasB, fIdX);
 
-        backtrackingPartidos(fechasA, fechasB, partidosDelDia, 0, fIdX, estadoGlobal);
+        backtrackingPartidos(fechasA, fechasB, partidosDelDia, 0, fIdX, estadoGlobal , ctx);
 
         estadoGlobal.restore(snapshotSeguridad);
         return false;
     }
 
-    private boolean backtrackingPartidos(List<Fecha> fechasA, List<Fecha> fechasB, List<Partido> partidos, int pIdx, int fIdx, EstadoFecha estadoFecha) {
+    private boolean backtrackingPartidos(List<Fecha> fechasA, List<Fecha> fechasB, List<Partido> partidos, int pIdx, int fIdx, EstadoFecha estadoFecha , GeneracionContexto ctx) {
         if (partidos.size() == pIdx) {
-            return resolverPartidosFecha(fechasA, fechasB, fIdx + 1, estadoFecha);
+            return resolverPartidosFecha(fechasA, fechasB, fIdx + 1, estadoFecha , ctx);
         }
 
         Partido p = partidos.get(pIdx);
@@ -88,22 +83,22 @@ public class FixtureService {
         boolean e1PrefiereLocal = estadoFecha.getEstado(e1.getId()).getUltimasConsecutivas() < 0;
 
         if (e1PrefiereLocal) {
-            if (probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx)) return true;
-            return probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
+            if (probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx)) return true;
+            return probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx);
         } else {
-            if (probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx)) return true;
-            return probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx);
+            if (probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx)) return true;
+            return probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx);
         }
     }
 
-    private boolean probarOpcion(Equipo loc, Equipo vis, Partido p, EstadoFecha estado, List<Fecha> fA, List<Fecha> fB, List<Partido> pts, int pIdx, int fIdx) {
+    private boolean probarOpcion(Equipo loc, Equipo vis, Partido p, EstadoFecha estado, List<Fecha> fA, List<Fecha> fB, List<Partido> pts, int pIdx, int fIdx , GeneracionContexto ctx) {
         if (esValido(loc, vis, estado)) {
             EstadoFecha efm = estado.snapshot();
             Partido pm1 = p.memento();
 
             aplicarLocalia(loc, vis, p, estado);
 
-            boolean exito = backtrackingPartidos(fA, fB, pts, pIdx + 1, fIdx, estado);
+            boolean exito = backtrackingPartidos(fA, fB, pts, pIdx + 1, fIdx, estado , ctx);
 
             if (exito) return true;
 
@@ -222,7 +217,7 @@ public class FixtureService {
     private void agregarPartido(Fecha f, Equipo loc, Equipo vis) {
         Partido p = new Partido();
         p.setLocal(loc); p.setVisitante(vis); p.setFecha(f);
-        f.getPartidos().add(p);
+        f.addPartido(p);
     }
 
     private void persistirFixture(List<Fecha> fechas) {
@@ -244,5 +239,16 @@ public class FixtureService {
 
                 .toList();
 
+    }
+    // Clase interna para agrupar el estado de la generación
+    private class GeneracionContexto {
+        List<Fecha> mejorSolucionA;
+        List<Fecha> mejorSolucionB;
+        int menorQuiebres = Integer.MAX_VALUE;
+        long fin;
+
+        public GeneracionContexto(long duracionMs) {
+            this.fin = System.currentTimeMillis() + duracionMs;
+        }
     }
 }
