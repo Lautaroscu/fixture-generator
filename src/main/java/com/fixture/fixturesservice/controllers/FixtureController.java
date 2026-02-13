@@ -67,4 +67,9 @@ public class FixtureController {
         }
 
     }
+    @GetMapping("/ping")
+    public ResponseEntity<ResponseDTO> ping() {
+            return ResponseEntity.ok(new ResponseDTO("pong" , true));
+
+    }
 }
