@@ -3,6 +3,7 @@ package com.fixture.fixturesservice.controllers;
 import com.fixture.fixturesservice.DTOS.FechaDTO;
 import com.fixture.fixturesservice.DTOS.ResponseDTO;
 import com.fixture.fixturesservice.entities.Equipo;
+import com.fixture.fixturesservice.enums.Categoria;
 import com.fixture.fixturesservice.enums.Liga;
 import com.fixture.fixturesservice.services.DataInitializer;
 import com.fixture.fixturesservice.services.ExcelService;
@@ -36,22 +37,23 @@ public class FixtureController {
         return ResponseEntity.ok(fixtureService.generar());
     }
     @GetMapping
-    public ResponseEntity<List<FechaDTO>> obtenerFixture(@RequestParam Liga liga) {
-        return ResponseEntity.ok(fixtureService.obtenerFixture(liga));
+    public ResponseEntity<List<FechaDTO>> obtenerFixture(@RequestParam Liga liga ,  @RequestParam Categoria categoria) {
+        return ResponseEntity.ok(fixtureService.obtenerFixturePorCategoria(liga , categoria));
     }
-    @GetMapping("/equipos")
-    public ResponseEntity<List<Equipo>> obtenerFixture() {
-        return ResponseEntity.ok(fixtureService.getEquipos());
-    }
+//    @GetMapping("/equipos")
+//    public ResponseEntity<List<Equipo>> obtenerFixture() {
+//        return ResponseEntity.ok(fixtureService.getEquipos());
+//    }
     @GetMapping("/exportar")
-    public ResponseEntity<byte[]> exportarFixture(@RequestParam Liga liga) throws IOException {
-        List<FechaDTO> fechas = fixtureService.obtenerFixture(liga);
+    public ResponseEntity<byte[]> exportarFixture(@RequestParam Liga liga , @RequestParam Categoria categoria) throws IOException {
+        List<FechaDTO> fechas = fixtureService.obtenerFixturePorCategoria(liga , categoria);
         byte[] excelContent = excelService.generarExcelFixture(fechas);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=fixture_liga_" + liga + ".xlsx")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(excelContent);
     }
+
 
 
 

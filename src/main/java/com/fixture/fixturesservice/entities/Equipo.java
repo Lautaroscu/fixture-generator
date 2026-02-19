@@ -1,6 +1,9 @@
 package com.fixture.fixturesservice.entities;
 
+import com.fixture.fixturesservice.enums.Bloque;
 import com.fixture.fixturesservice.enums.Categoria;
+import com.fixture.fixturesservice.enums.DiaJuego;
+import com.fixture.fixturesservice.enums.Liga;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,10 +21,6 @@ public class Equipo {
 
     private String nombre;
 
-    @ManyToOne
-    @JoinColumn(name = "cancha_id")
-    private Cancha sede;
-
     // Campos para el algoritmo (no se guardan en DB)
     @Transient
     private int ultimasConsecutivas;
@@ -31,39 +30,39 @@ public class Equipo {
 
     @Transient
     private int totalPartidosLocal;
-    private boolean juegaA;
-    @ElementCollection(fetch = FetchType.EAGER)
-    @Enumerated(EnumType.STRING)
-    private Set<Categoria> categorias = new HashSet<>();
-
     private int jerarquia;
+    @Enumerated(EnumType.STRING)
+    private Bloque bloque; // EJ: JUVENILES
+    @ElementCollection
+    private Set<Categoria> categoriasHabilitadas; // EJ: [QUINTA, SEXTA, SEPTIMA]
+    @ManyToOne
+    @JoinColumn(name = "club_id")
+    private Club club;
+    @Enumerated(EnumType.STRING)
+    private Liga divisionMayor;
+    @Enumerated(EnumType.STRING)
+    private DiaJuego diaDeJuego;
 
     // Constructor para JPA
     public Equipo() {}
 
-    public Equipo(String name) {
-        this.nombre = name;
-
-    }
-
-    // Constructor para negocio
-    public Equipo(String nombre, Cancha sede) {
+    public Equipo(String nombre) {
         this.nombre = nombre;
-        this.sede = sede;
         this.ultimasConsecutivas = 0;
         this.usoQuiebre = false;
         this.totalPartidosLocal = 0;
     }
+
+    public Equipo(Equipo equipo) {
+    }
+
     public Equipo memento() {
         Equipo copia = new Equipo();
         copia.setUltimasConsecutivas(this.ultimasConsecutivas);
         copia.setUsoQuiebre(this.usoQuiebre);
         copia.setTotalPartidosLocal(this.totalPartidosLocal);
         copia.setId(this.id);
-        copia.setJuegaA(this.juegaA);
-        copia.setSede(this.sede);
         copia.setNombre(this.nombre);
-        copia.setCategorias(this.categorias);
         return copia;
     }
 

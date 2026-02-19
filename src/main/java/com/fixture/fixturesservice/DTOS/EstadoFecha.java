@@ -4,15 +4,15 @@ import com.fixture.fixturesservice.entities.Equipo;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+
 @Getter
 @Setter
 public class EstadoFecha {
     Set<Integer> sedesUsadas;
-    Map<Integer, EstadoEquipo> estadoPorEquipo; //equipo id -> Estado Equipo
+    Map<Integer, EstadoEquipo> estadoPorEquipo;
+    private Set<Integer> clubesLocales = new HashSet<>();
+
 
     public EstadoFecha() {
         sedesUsadas = new HashSet<>();
@@ -32,7 +32,7 @@ public class EstadoFecha {
     public EstadoFecha snapshot() {
         EstadoFecha copia = new EstadoFecha();
         copia.sedesUsadas = new HashSet<>(this.sedesUsadas);
-
+        copia.clubesLocales.addAll(this.clubesLocales);
         // Copiamos el mapa de estados de equipos (CREANDO nuevos objetos EstadoEquipo)
         for (Map.Entry<Integer, EstadoEquipo> entry : this.estadoPorEquipo.entrySet()) {
             EstadoEquipo original = entry.getValue();
@@ -47,6 +47,7 @@ public class EstadoFecha {
 
     public void restore(EstadoFecha snapshot) {
         this.sedesUsadas = new HashSet<>(snapshot.getSedesUsadas());
+        this.clubesLocales = new HashSet<>(snapshot.clubesLocales);
         this.estadoPorEquipo = new HashMap<>();
         for (Map.Entry<Integer, EstadoEquipo> entry : snapshot.getEstadoPorEquipo().entrySet()) {
             this.estadoPorEquipo.put(entry.getKey(), new EstadoEquipo(entry.getValue()));

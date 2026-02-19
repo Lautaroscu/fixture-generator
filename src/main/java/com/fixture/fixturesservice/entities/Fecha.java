@@ -1,5 +1,6 @@
 package com.fixture.fixturesservice.entities;
 
+import com.fixture.fixturesservice.enums.Bloque;
 import com.fixture.fixturesservice.enums.Categoria;
 import com.fixture.fixturesservice.enums.Liga;
 import jakarta.persistence.*;
@@ -22,10 +23,9 @@ public class Fecha {
     @OneToMany(mappedBy = "fecha", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Partido> partidos = new ArrayList<>();
     @Enumerated(EnumType.STRING)
-    private Categoria categoria;
-    @Enumerated(EnumType.STRING)
     private Liga liga; // A o B
-
+    @Enumerated(EnumType.STRING)
+    private Bloque bloque;
     public Fecha() {}
     public Fecha(int nro) { this.nroFecha = nro; }
     @Override
