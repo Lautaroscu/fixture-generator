@@ -40,15 +40,14 @@ public class FixtureService {
         if (todosLosEquipos.isEmpty()) return new ResponseDTO("No hay equipos.", false);
 
         Map<String, List<Equipo>> agrupadosPorTorneo = agruparEquiposPorTorneo(todosLosEquipos);
-
         int MAX_INTENTOS = 500;
-        long TIMEOUT_POR_INTENTO_MS = 100;
+        long TIMEOUT_GLOBAL_POR_DIA_MS = 20000;
 
         // Resolvemos SÁBADO (Incluye Juveniles Masc + Femenino)
-        boolean exitoSabado = resolverBloqueConReinicios(agrupadosPorTorneo, DiaJuego.SABADO, MAX_INTENTOS, TIMEOUT_POR_INTENTO_MS);
+        boolean exitoSabado = resolverBloqueConReinicios(agrupadosPorTorneo, DiaJuego.SABADO, MAX_INTENTOS, TIMEOUT_GLOBAL_POR_DIA_MS);
 
         // Resolvemos DOMINGO (Mayores Masc + Infantiles Masc)
-        boolean exitoDomingo = resolverBloqueConReinicios(agrupadosPorTorneo, DiaJuego.DOMINGO, MAX_INTENTOS, TIMEOUT_POR_INTENTO_MS);
+        boolean exitoDomingo = resolverBloqueConReinicios(agrupadosPorTorneo, DiaJuego.DOMINGO, MAX_INTENTOS, TIMEOUT_GLOBAL_POR_DIA_MS);
 
         if (exitoSabado && exitoDomingo) {
             return new ResponseDTO("Fixture MASCULINO y FEMENINO generado con éxito.", true);
@@ -235,20 +234,12 @@ public class FixtureService {
     }
 
     public boolean esValido(Equipo loc, Equipo vis, EstadoFecha estadoFecha) {
-        // 🔥 FIX: BLINDAJE DE TIPOS (Evita errores Integer vs Long)
         int sedeId = ((Number) loc.getClub().getSede().getId()).intValue();
         int clubLocalId = ((Number) loc.getClub().getId()).intValue();
-
-        // 🔥 FIX: CARTA BLANCA (Vital para la Tira)
-        // Si mi club ya abrió la cancha hoy, tengo permiso ABSOLUTO para jugar,
-        // ignorando si la cancha parece ocupada o mis rachas son malas.
         if (estadoFecha.getClubesLocales().contains(clubLocalId)) {
             return true;
         }
-
-        // CHEQUEO DE SEDE OCUPADA
         if (estadoFecha.getSedesUsadas().contains(sedeId)) {
-            // Como no tengo carta blanca y la sede está usada, es un conflicto real.
             return false;
         }
 
@@ -349,6 +340,39 @@ public class FixtureService {
         }
         return torneo;
     }
+    public List<Fecha> generarEsqueletoBergerIdaVuelta(List<Equipo> equipos, Bloque bloque, Liga liga) {
+
+        List<Fecha> ida = generarEsqueletoBerger(equipos, bloque, liga);
+
+        int offset = ida.size();
+        List<Fecha> vuelta = new ArrayList<>();
+
+        for (Fecha fIda : ida) {
+
+            Fecha fVuelta = new Fecha(fIda.getNroFecha() + offset);
+            fVuelta.setBloque(bloque);
+            fVuelta.setLiga(liga);
+
+            for (Partido pIda : fIda.getPartidos()) {
+
+                Equipo nuevoLocal = pIda.getVisitante();
+                Equipo nuevoVisitante = pIda.getLocal();
+
+                if (nuevoLocal.getId() != -99 && nuevoVisitante.getId() != -99) {
+                    agregarPartido(fVuelta, nuevoLocal, nuevoVisitante);
+                }
+            }
+
+            vuelta.add(fVuelta);
+        }
+
+        List<Fecha> torneoCompleto = new ArrayList<>();
+        torneoCompleto.addAll(ida);
+        torneoCompleto.addAll(vuelta);
+
+        return torneoCompleto;
+    }
+
 
     private void rotarBerger(List<Equipo> lista) {
         int n = lista.size();
@@ -451,7 +475,7 @@ public class FixtureService {
         for (int i = 0; i < torneosEquipos.size(); i++) {
             // Como le quitamos el shuffle interno a generarEsqueletoBerger,
             // ahora respeta el orden estricto que le pasa el Hill Climbing.
-            todasLasFechas.add(generarEsqueletoBerger(torneosEquipos.get(i), bloques.get(i), ligas.get(i)));
+            todasLasFechas.add(generarEsqueletoBergerIdaVuelta(torneosEquipos.get(i), bloques.get(i), ligas.get(i)));
         }
         return todasLasFechas;
     }
@@ -483,22 +507,61 @@ public class FixtureService {
     }
 
     private int calcularPenalizacion(List<List<Fecha>> ligas) {
-        int quiebres = 0;
-        Map<Integer, Integer> ultEstado = new HashMap<>();
+
+        int penalizacion = 0;
+
+        // idEquipo -> racha actual (positivo local, negativo visitante)
+        Map<Integer, Integer> rachas = new HashMap<>();
+
         for (List<Fecha> liga : ligas) {
             for (Fecha f : liga) {
                 for (Partido p : f.getPartidos()) {
-                    Integer locId = p.getLocal().getId();
-                    Integer visId = p.getVisitante().getId();
-                    if (ultEstado.getOrDefault(locId, 0) == 1) quiebres++;
-                    if (ultEstado.getOrDefault(visId, 0) == -1) quiebres++;
-                    ultEstado.put(locId, 1);
-                    ultEstado.put(visId, -1);
+
+                    if (p.getLocal().getId() == -99 || p.getVisitante().getId() == -99)
+                        continue;
+
+                    int locId = p.getLocal().getId();
+                    int visId = p.getVisitante().getId();
+
+                    // --- LOCAL ---
+                    int rachaLocal = rachas.getOrDefault(locId, 0);
+
+                    if (rachaLocal > 0)
+                        rachaLocal++;
+                    else
+                        rachaLocal = 1;
+
+                    rachas.put(locId, rachaLocal);
+
+                    if (Math.abs(rachaLocal) == 2)
+                        penalizacion += 2;      // leve
+
+                    if (Math.abs(rachaLocal) >= 3)
+                        penalizacion += 1000;   // casi prohibido
+
+
+                    // --- VISITANTE ---
+                    int rachaVis = rachas.getOrDefault(visId, 0);
+
+                    if (rachaVis < 0)
+                        rachaVis--;
+                    else
+                        rachaVis = -1;
+
+                    rachas.put(visId, rachaVis);
+
+                    if (Math.abs(rachaVis) == 2)
+                        penalizacion += 2;
+
+                    if (Math.abs(rachaVis) >= 3)
+                        penalizacion += 1000;
                 }
             }
         }
-        return quiebres;
+
+        return penalizacion;
     }
+
 
     private List<List<Fecha>> clonarTodasLasFechas(List<List<Fecha>> originales) {
         List<List<Fecha>> copiasMulti = new ArrayList<>();
@@ -527,32 +590,72 @@ public class FixtureService {
         fechaRepository.saveAll(fechas);
     }
 
-    // Método de proyección para frontend
     public List<FechaDTO> obtenerFixturePorCategoria(Liga liga, Categoria categoriaSolicitada) {
+
         Bloque bloque = determinarBloque(categoriaSolicitada);
-        List<Fecha> fechasMaestras = fechaRepository.findAllByLigaAndBloqueOrderByNroFechaAsc(liga, bloque);
+        List<Fecha> fechasMaestras =
+                fechaRepository.findAllByLigaAndBloqueOrderByNroFechaAsc(liga, bloque);
+
         List<FechaDTO> fixtureProyectado = new ArrayList<>();
 
         for (Fecha f : fechasMaestras) {
+
             FechaDTO fDto = new FechaDTO(f.getNroFecha(), f.getLiga().name());
+
             for (Partido p : f.getPartidos()) {
+
                 Equipo local = p.getLocal();
                 Equipo visitante = p.getVisitante();
-                boolean localTiene = local.getCategoriasHabilitadas().contains(categoriaSolicitada);
-                boolean visitanteTiene = visitante.getCategoriasHabilitadas().contains(categoriaSolicitada);
 
-                if (localTiene && visitanteTiene) {
-                    fDto.addPartido(new PartidoDTO(local.getNombre(), visitante.getNombre(), p.getCancha().getName()));
-                } else if (localTiene && !visitanteTiene) {
-                    fDto.addPartido(new PartidoDTO(local.getNombre(), "LIBRE", "LIBRE_VISITANTE"));
-                } else if (!localTiene && visitanteTiene) {
-                    fDto.addPartido(new PartidoDTO("LIBRE", visitante.getNombre(), "LIBRE_LOCAL"));
+
+
+                    boolean localTiene = local.getCategoriasHabilitadas() != null
+                            && local.getCategoriasHabilitadas().contains(categoriaSolicitada) && local.getDivisionMayor().equals(liga);
+
+                    boolean visitanteTiene = visitante.getCategoriasHabilitadas() != null
+                            && visitante.getCategoriasHabilitadas().contains(categoriaSolicitada) && visitante.getDivisionMayor().equals(liga);
+
+                    if (localTiene && visitanteTiene) {
+                        String nombreCancha =
+                                p.getCancha() != null ? p.getCancha().getName() : "A DEFINIR";
+
+                        fDto.addPartido(new PartidoDTO(
+                                local.getNombre(),
+                                visitante.getNombre(),
+                                nombreCancha
+                        ));
+                    }
+
+
+                // --- CASO 2: Local es libre ---
+                else if (localTiene && !visitanteTiene) {
+
+                    fDto.addPartido(new PartidoDTO(
+                            "LIBRE",
+                            visitante.getNombre(),
+                            "DESCANSA"
+                    ));
+                }
+
+                // --- CASO 3: Visitante es libre ---
+                else if (!localTiene && visitanteTiene) {
+
+                    fDto.addPartido(new PartidoDTO(
+                            local.getNombre(),
+                            "LIBRE",
+                            "DESCANSA"
+                    ));
                 }
             }
-            fixtureProyectado.add(fDto);
+
+            if (!fDto.getPartidos().isEmpty()) {
+                fixtureProyectado.add(fDto);
+            }
         }
+
         return fixtureProyectado;
     }
+
 
     // Contexto
     private class GeneracionContexto {
@@ -564,5 +667,8 @@ public class FixtureService {
         public GeneracionContexto(long duracionMs) {
             this.fin = System.currentTimeMillis() + duracionMs;
         }
+    }
+    public List<EquipoDTO> equipos() {
+        return equipoRepository.findAll().stream().map(EquipoDTO::toDTO).toList();
     }
 }

@@ -1,5 +1,6 @@
 package com.fixture.fixturesservice.controllers;
 
+import com.fixture.fixturesservice.DTOS.EquipoDTO;
 import com.fixture.fixturesservice.DTOS.FechaDTO;
 import com.fixture.fixturesservice.DTOS.ResponseDTO;
 import com.fixture.fixturesservice.entities.Equipo;
@@ -40,10 +41,10 @@ public class FixtureController {
     public ResponseEntity<List<FechaDTO>> obtenerFixture(@RequestParam Liga liga ,  @RequestParam Categoria categoria) {
         return ResponseEntity.ok(fixtureService.obtenerFixturePorCategoria(liga , categoria));
     }
-//    @GetMapping("/equipos")
-//    public ResponseEntity<List<Equipo>> obtenerFixture() {
-//        return ResponseEntity.ok(fixtureService.getEquipos());
-//    }
+    @GetMapping("/equipos")
+    public ResponseEntity<List<EquipoDTO>> obtenerFixture() {
+        return ResponseEntity.ok(fixtureService.equipos());
+    }
     @GetMapping("/exportar")
     public ResponseEntity<byte[]> exportarFixture(@RequestParam Liga liga , @RequestParam Categoria categoria) throws IOException {
         List<FechaDTO> fechas = fixtureService.obtenerFixturePorCategoria(liga , categoria);
