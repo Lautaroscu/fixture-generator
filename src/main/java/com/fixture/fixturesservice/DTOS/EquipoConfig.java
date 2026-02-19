@@ -9,6 +9,7 @@ public class EquipoConfig {
     public Map<String, Boolean> categorias;
     public boolean estadioPropio;
     public String estadioLocal;
+    public String divisionInfantiles; // <--- AGREGAR ESTO
     public int jerarquia;
     public List<String> restricciones;
 }

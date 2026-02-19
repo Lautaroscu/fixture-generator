@@ -9,5 +9,5 @@ public enum Categoria {
     OCTAVA,
     NOVENA,
     DECIMA,
-    UNDECIMA
+    FEM_PRIMERA, FEM_SUB14, FEM_SUB16, FEM_SUB12, UNDECIMA
 }

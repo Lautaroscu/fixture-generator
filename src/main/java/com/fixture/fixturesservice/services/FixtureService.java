@@ -4,7 +4,6 @@ import com.fixture.fixturesservice.DTOS.*;
 import com.fixture.fixturesservice.DTOS.EstadoFecha;
 import com.fixture.fixturesservice.entities.*;
 import com.fixture.fixturesservice.enums.*;
-import com.fixture.fixturesservice.mappers.FixtureMapper;
 import com.fixture.fixturesservice.repositories.*;
 import jakarta.transaction.Transactional;
 import org.jspecify.annotations.Nullable;
@@ -12,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class FixtureService {
@@ -21,198 +21,441 @@ public class FixtureService {
     @Autowired
     private FechaRepository fechaRepository;
 
+    // 1. ACTUALIZAR MAPA DE BLOQUES
+    private Map<Bloque, List<String>> definicionBloques = Map.of(
+            Bloque.MAYORES, List.of("primera", "reserva"),
+            Bloque.JUVENILES, List.of("quinta", "sexta", "septima", "octava"),
+            Bloque.INFANTILES, List.of("novena", "decima", "undecima"),
+            // Nuevos bloques femeninos
+            Bloque.FEM_MAYORES, List.of("femenino_primera", "femenino_sub16"),
+            Bloque.FEM_MENORES, List.of("femenino_sub14", "femenino_sub12")
+    );
+
+    // 2. ACTUALIZAR GENERAR() para incluir FEMENINO
     @Transactional
     public ResponseDTO generar() {
-
         fechaRepository.deleteAll();
-        GeneracionContexto ctx = new GeneracionContexto(15000);
-        List<Equipo> equiposA = equipoRepository.findAllByJuegaA(true);
-        List<Equipo> equiposB = equipoRepository.findAllByJuegaA(false);
+        List<Equipo> todosLosEquipos = equipoRepository.findAll();
 
+        if (todosLosEquipos.isEmpty()) return new ResponseDTO("No hay equipos.", false);
 
-        List<Fecha> fechasA = generarEsqueletoRobin(equiposA, Liga.A);
-        List<Fecha> fechasB = generarEsqueletoRobin(equiposB, Liga.B);
+        Map<String, List<Equipo>> agrupadosPorTorneo = agruparEquiposPorTorneo(todosLosEquipos);
 
-        EstadoFecha historialInicial = new EstadoFecha();
-        inicializarHistorial(historialInicial, equiposA, equiposB);
+        int MAX_INTENTOS = 500;
+        long TIMEOUT_POR_INTENTO_MS = 100;
 
-        resolverPartidosFecha(fechasA, fechasB, 0, historialInicial , ctx);
+        // Resolvemos SÁBADO (Incluye Juveniles Masc + Femenino)
+        boolean exitoSabado = resolverBloqueConReinicios(agrupadosPorTorneo, DiaJuego.SABADO, MAX_INTENTOS, TIMEOUT_POR_INTENTO_MS);
 
-        if (ctx.mejorSolucionA != null) {
-            persistirFixture(ctx.mejorSolucionA);
-            persistirFixture(ctx.mejorSolucionB);
-            return new ResponseDTO("Fixture optimizado con " + ctx.menorQuiebres + " quiebres.", true);
+        // Resolvemos DOMINGO (Mayores Masc + Infantiles Masc)
+        boolean exitoDomingo = resolverBloqueConReinicios(agrupadosPorTorneo, DiaJuego.DOMINGO, MAX_INTENTOS, TIMEOUT_POR_INTENTO_MS);
+
+        if (exitoSabado && exitoDomingo) {
+            return new ResponseDTO("Fixture MASCULINO y FEMENINO generado con éxito.", true);
         }
-        return new ResponseDTO("No se pudo generar un fixture válido.", false);
+        return new ResponseDTO("Sabado: " + exitoSabado + " | Domingo: " + exitoDomingo, false);
     }
 
-    private boolean resolverPartidosFecha(List<Fecha> fechasA, List<Fecha> fechasB, int fIdX, EstadoFecha estadoGlobal , GeneracionContexto ctx) {
-        if (fIdX >= fechasA.size() && fIdX >= fechasB.size()) {
-            int quiebresActuales = calcularPenalizacion(fechasA) + calcularPenalizacion(fechasB);
-
-            if (quiebresActuales < ctx.menorQuiebres) {
-                ctx.menorQuiebres = quiebresActuales;
-                ctx.mejorSolucionA = clonarFechas(fechasA);
-                ctx.mejorSolucionB = clonarFechas(fechasB);
+    // 3. ACTUALIZAR LA LÓGICA DE PRIORIDAD (Aquí está la clave de "Prioridad Absoluta")
+    private List<Partido> recolectarPartidosMulti(List<List<Fecha>> ligas, int fIdx) {
+        List<Partido> partidos = new ArrayList<>();
+        for (List<Fecha> liga : ligas) {
+            if (fIdx < liga.size()) {
+                for (Partido p : liga.get(fIdx).getPartidos()) {
+                    if (p != null && p.getLocal() != null && p.getVisitante() != null) {
+                        partidos.add(p);
+                    }
+                }
             }
-            return false;
         }
 
-        if (System.currentTimeMillis() > ctx.fin) return false;
+        partidos.sort((p1, p2) -> {
+            // CRITERIO 1: Equipos con Sede Compartida PRIMERO (Logística pura)
+            boolean comp1 = p1.getLocal().getClub().getSede().isCompartida();
+            boolean comp2 = p2.getLocal().getClub().getSede().isCompartida();
+            if (comp1 != comp2) return Boolean.compare(comp2, comp1);
 
-        EstadoFecha snapshotSeguridad = estadoGlobal.snapshot();
-        estadoGlobal.getSedesUsadas().clear();
+            // CRITERIO 2: Jerarquía de Bloques (MASCULINO MATA FEMENINO)
+            // 1. Mayores Masc (Domingo)
+            // 2. Juveniles Masc (Sábado)
+            // 3. Infantiles Masc (Domingo)
+            // 4. Femenino Mayores (Sábado) -> Se acomoda al final
+            // 5. Femenino Menores (Sábado)
 
-        List<Partido> partidosDelDia = recolectarPartidos(fechasA, fechasB, fIdX);
+            int score1 = getScoreJerarquia(p1.getLocal().getBloque());
+            int score2 = getScoreJerarquia(p2.getLocal().getBloque());
 
-        backtrackingPartidos(fechasA, fechasB, partidosDelDia, 0, fIdX, estadoGlobal , ctx);
+            return Integer.compare(score1, score2);
+        });
 
-        estadoGlobal.restore(snapshotSeguridad);
+        return partidos;
+    }
+
+    // Helper para dar puntaje de prioridad (Menor número = Mayor prioridad)
+    private int getScoreJerarquia(Bloque b) {
+        switch (b) {
+            case MAYORES: return 1;      // Prioridad Absoluta Domingo
+            case JUVENILES: return 2;    // Prioridad Absoluta Sábado
+            case INFANTILES: return 3;
+            case FEM_MAYORES: return 4;  // Se acomoda si hay lugar
+            case FEM_MENORES: return 5;
+            default: return 99;
+        }
+    }
+
+    private Bloque determinarBloque(Categoria cat) {
+        // Mapeo simple
+        switch (cat) {
+            case PRIMERA: case RESERVA: return Bloque.MAYORES;
+            case QUINTA: case SEXTA: case SEPTIMA: case OCTAVA: return Bloque.JUVENILES;
+            case NOVENA: case DECIMA: case UNDECIMA: return Bloque.INFANTILES;
+            // Categorías Femeninas (Asegurate que existan en el Enum Categoria)
+            case FEM_PRIMERA: case FEM_SUB16: return Bloque.FEM_MAYORES;
+            case FEM_SUB14: case FEM_SUB12: return Bloque.FEM_MENORES;
+            default: return Bloque.MAYORES;
+        }
+    }
+
+    private boolean resolverBloqueConReinicios(Map<String, List<Equipo>> agrupados, DiaJuego dia, int maxIntentos, long timeoutMs) {
+        System.out.println("--- INICIANDO CÁLCULO DE " + dia + " ---");
+
+        for (int intento = 1; intento <= maxIntentos; intento++) {
+            List<List<Fecha>> torneos = generarMejorCombinacionEsqueletos(agrupados, dia);
+            if (torneos.isEmpty()) return true;
+
+            GeneracionContexto ctx = new GeneracionContexto(timeoutMs);
+            EstadoFecha estado = inicializarHistorialGlobal(torneos);
+
+            resolverDia(torneos, 0, estado, ctx);
+
+            if (ctx.mejorSolucion != null) {
+                System.out.println("✅ EXITO para " + dia + " en intento " + intento);
+                ctx.mejorSolucion.forEach(this::persistirFixture);
+                return true;
+            }
+        }
+        System.out.println("❌ FRACASO para " + dia + " después de " + maxIntentos + " intentos.");
         return false;
     }
 
-    private boolean backtrackingPartidos(List<Fecha> fechasA, List<Fecha> fechasB, List<Partido> partidos, int pIdx, int fIdx, EstadoFecha estadoFecha , GeneracionContexto ctx) {
+    // --- MOTOR DE RESOLUCIÓN ---
+
+    private boolean resolverDia(List<List<Fecha>> ligas, int fIdX, EstadoFecha estadoGlobal, GeneracionContexto ctx) {
+        if (ctx.abortar || System.currentTimeMillis() > ctx.fin) {
+            ctx.abortar = true;
+            return false;
+        }
+
+        boolean torneosCompletados = true;
+        for (List<Fecha> liga : ligas) {
+            if (fIdX < liga.size()) torneosCompletados = false;
+        }
+
+        if (torneosCompletados) {
+            int quiebresActuales = calcularPenalizacion(ligas);
+            if (quiebresActuales < ctx.menorQuiebres) {
+                ctx.menorQuiebres = quiebresActuales;
+                ctx.mejorSolucion = clonarTodasLasFechas(ligas);
+            }
+            return true;
+        }
+
+        EstadoFecha snapshotSeguridad = estadoGlobal.snapshot();
+        estadoGlobal.getSedesUsadas().clear();
+        estadoGlobal.getClubesLocales().clear(); // Limpieza vital
+
+        List<Partido> partidosDelDia = recolectarPartidosMulti(ligas, fIdX);
+
+        backtrackingMulti(ligas, partidosDelDia, 0, fIdX, estadoGlobal, ctx);
+
+        estadoGlobal.restore(snapshotSeguridad);
+        return ctx.mejorSolucion != null;
+    }
+
+    private boolean backtrackingMulti(List<List<Fecha>> ligas, List<Partido> partidos, int pIdx, int fIdx, EstadoFecha estadoFecha, GeneracionContexto ctx) {
+        if (ctx.abortar) return false;
+
         if (partidos.size() == pIdx) {
-            return resolverPartidosFecha(fechasA, fechasB, fIdx + 1, estadoFecha , ctx);
+            return resolverDia(ligas, fIdx + 1, estadoFecha, ctx);
         }
 
         Partido p = partidos.get(pIdx);
         Equipo e1 = p.getLocal();
         Equipo e2 = p.getVisitante();
+        if (e1.getId() == -99 || e2.getId() == -99) {
+            return backtrackingMulti(ligas, partidos, pIdx + 1, fIdx, estadoFecha, ctx);
+        }
+        // 🔥 FIX: Blindaje de Tipos (Number -> intValue)
+        int e1ClubId = ((Number) e1.getClub().getId()).intValue();
+        int e2ClubId = ((Number) e2.getClub().getId()).intValue();
 
+        // INTELIGENCIA DE TIRA
+        boolean e1YaAbrioCancha = estadoFecha.getClubesLocales().contains(e1ClubId);
+        boolean e2YaAbrioCancha = estadoFecha.getClubesLocales().contains(e2ClubId);
+
+        if (e1YaAbrioCancha) {
+            return probarOpcion(e1, e2, p, estadoFecha, ligas, partidos, pIdx, fIdx, ctx);
+        }
+        if (e2YaAbrioCancha) {
+            return probarOpcion(e2, e1, p, estadoFecha, ligas, partidos, pIdx, fIdx, ctx);
+        }
+
+        // Decisión por estadística
         boolean e1PrefiereLocal = estadoFecha.getEstado(e1.getId()).getUltimasConsecutivas() < 0;
 
         if (e1PrefiereLocal) {
-            if (probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx)) return true;
-            return probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx);
+            if (probarOpcion(e1, e2, p, estadoFecha, ligas, partidos, pIdx, fIdx, ctx)) return true;
+            if (ctx.abortar) return false;
+            return probarOpcion(e2, e1, p, estadoFecha, ligas, partidos, pIdx, fIdx, ctx);
         } else {
-            if (probarOpcion(e2, e1, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx)) return true;
-            return probarOpcion(e1, e2, p, estadoFecha, fechasA, fechasB, partidos, pIdx, fIdx , ctx);
+            if (probarOpcion(e2, e1, p, estadoFecha, ligas, partidos, pIdx, fIdx, ctx)) return true;
+            if (ctx.abortar) return false;
+            return probarOpcion(e1, e2, p, estadoFecha, ligas, partidos, pIdx, fIdx, ctx);
         }
     }
 
-    private boolean probarOpcion(Equipo loc, Equipo vis, Partido p, EstadoFecha estado, List<Fecha> fA, List<Fecha> fB, List<Partido> pts, int pIdx, int fIdx , GeneracionContexto ctx) {
+    private boolean probarOpcion(Equipo loc, Equipo vis, Partido p, EstadoFecha estado, List<List<Fecha>> ligas, List<Partido> pts, int pIdx, int fIdx, GeneracionContexto ctx) {
+        if (ctx.abortar) return false;
+
         if (esValido(loc, vis, estado)) {
             EstadoFecha efm = estado.snapshot();
             Partido pm1 = p.memento();
 
             aplicarLocalia(loc, vis, p, estado);
 
-            boolean exito = backtrackingPartidos(fA, fB, pts, pIdx + 1, fIdx, estado , ctx);
+            boolean exito = backtrackingMulti(ligas, pts, pIdx + 1, fIdx, estado, ctx);
 
             if (exito) return true;
 
             estado.restore(efm);
             p.restore(pm1);
+            if (ctx.abortar) return false;
         }
         return false;
     }
 
-    private List<Fecha> clonarFechas(List<Fecha> originales) {
-        List<Fecha> copias = new ArrayList<>();
-        for (Fecha f : originales) {
-            Fecha copiaF = new Fecha(f.getNroFecha());
-            copiaF.setLiga(f.getLiga());
-            for (Partido p : f.getPartidos()) {
-                Partido copiaP = new Partido();
-                copiaP.setLocal(p.getLocal());
-                copiaP.setVisitante(p.getVisitante());
-                copiaP.setCancha(p.getCancha());
-                copiaP.setFecha(copiaF);
-                copiaF.getPartidos().add(copiaP);
-            }
-            copias.add(copiaF);
+    public boolean esValido(Equipo loc, Equipo vis, EstadoFecha estadoFecha) {
+        // 🔥 FIX: BLINDAJE DE TIPOS (Evita errores Integer vs Long)
+        int sedeId = ((Number) loc.getClub().getSede().getId()).intValue();
+        int clubLocalId = ((Number) loc.getClub().getId()).intValue();
+
+        // 🔥 FIX: CARTA BLANCA (Vital para la Tira)
+        // Si mi club ya abrió la cancha hoy, tengo permiso ABSOLUTO para jugar,
+        // ignorando si la cancha parece ocupada o mis rachas son malas.
+        if (estadoFecha.getClubesLocales().contains(clubLocalId)) {
+            return true;
         }
-        return copias;
-    }
 
-    private int calcularPenalizacion(List<Fecha> fechas) {
-        int quiebres = 0;
-        Map<Integer, Integer> ultEstado = new HashMap<>(); // ID -> última condición (1 local, -1 vis)
-
-        for (Fecha f : fechas) {
-            for (Partido p : f.getPartidos()) {
-                if (p.getLocal() == null) continue;
-
-                int locId = p.getLocal().getId();
-                int visId = p.getVisitante().getId();
-
-                if (ultEstado.getOrDefault(locId, 0) == 1) quiebres++;
-                if (ultEstado.getOrDefault(visId, 0) == -1) quiebres++;
-
-                ultEstado.put(locId, 1);
-                ultEstado.put(visId, -1);
-            }
+        // CHEQUEO DE SEDE OCUPADA
+        if (estadoFecha.getSedesUsadas().contains(sedeId)) {
+            // Como no tengo carta blanca y la sede está usada, es un conflicto real.
+            return false;
         }
-        return quiebres;
+
+        // CHEQUEO DE RACHAS
+        EstadoEquipo el = estadoFecha.getEstado(loc.getId());
+        EstadoEquipo ev = estadoFecha.getEstado(vis.getId());
+
+        return el.getUltimasConsecutivas() < 3 && ev.getUltimasConsecutivas() > -3;
     }
 
-
-    private void inicializarHistorial(EstadoFecha historial, List<Equipo> equiposA, List<Equipo> equiposB) {
-        for (Equipo e : equiposA) historial.getEstadoPorEquipo().put(e.getId(), new EstadoEquipo());
-        for (Equipo e : equiposB) historial.getEstadoPorEquipo().put(e.getId(), new EstadoEquipo());
-    }
-
-    private List<Partido> recolectarPartidos(List<Fecha> fA, List<Fecha> fB, int idx) {
-        List<Partido> partidos = new ArrayList<>();
-        validarYAgregar(partidos, fA, idx);
-        validarYAgregar(partidos, fB, idx);
-        partidos.sort((p1, p2) -> Boolean.compare(p2.getLocal().getSede().isCompartida(), p1.getLocal().getSede().isCompartida()));
-        return partidos;
-    }
-
-    private void validarYAgregar(List<Partido> destino, List<Fecha> fuente, int idx) {
-
-        if (idx < fuente.size()) {
-
-            for (Partido p : fuente.get(idx).getPartidos()) {
-                if (p != null && p.getLocal() != null && p.getVisitante() != null) {
-                    destino.add(p);
-                }
-            }
-        }
-    }
     private void aplicarLocalia(Equipo loc, Equipo vis, Partido p, EstadoFecha estado) {
         p.setLocal(loc);
         p.setVisitante(vis);
-        p.setCancha(loc.getSede());
-        estado.addSedeUsada(loc.getSede().getId());
+        p.setCancha(loc.getClub().getSede());
+
+        // 🔥 FIX: Blindaje de Tipos al guardar
+        int clubId = ((Number) loc.getClub().getId()).intValue();
+        int sedeId = ((Number) loc.getClub().getSede().getId()).intValue();
+
+        estado.getClubesLocales().add(clubId);
+        estado.addSedeUsada(sedeId);
+
         estado.getEstado(loc.getId()).actualizar(true);
         estado.getEstado(vis.getId()).actualizar(false);
     }
 
-    public boolean esValido(Equipo loc, Equipo vis, EstadoFecha estadoFecha) {
-        if (estadoFecha.getSedesUsadas().contains(loc.getSede().getId())) return false;
-        EstadoEquipo el = estadoFecha.getEstado(loc.getId());
-        EstadoEquipo ev = estadoFecha.getEstado(vis.getId());
-        return el.getUltimasConsecutivas() < 2 && ev.getUltimasConsecutivas() > -2;
+
+    private int calcularChoquesGlobales(List<List<Fecha>> torneos) {
+        int totalChoques = 0;
+        int maxFechas = torneos.stream().mapToInt(List::size).max().orElse(0);
+
+        for (int fIdx = 0; fIdx < maxFechas; fIdx++) {
+            // Mapa de Sede ID -> Club ID Ocupante
+            Map<Integer, Integer> sedesUsadas = new HashMap<>();
+
+            for (List<Fecha> torneo : torneos) {
+                if (fIdx < torneo.size()) {
+                    for (Partido p : torneo.get(fIdx).getPartidos()) {
+                        if (p.getLocal().getId() == -99 || p.getVisitante().getId() == -99) continue;
+
+                        int sedeId = ((Number) p.getLocal().getClub().getSede().getId()).intValue();
+                        int clubId = ((Number) p.getLocal().getClub().getId()).intValue();
+
+                        Integer ocupanteActual = sedesUsadas.get(sedeId);
+
+                        // Si la sede está ocupada por un CLUB DISTINTO, entonces sí es un choque real
+                        if (ocupanteActual != null && !ocupanteActual.equals(clubId)) {
+                            totalChoques++;
+                        } else {
+                            // Si está libre o la está usando el mismo club (Tira), la registramos
+                            sedesUsadas.put(sedeId, clubId);
+                        }
+                    }
+                }
+            }
+        }
+        return totalChoques;
     }
 
-    public List<Fecha> generarEsqueletoRobin(List<Equipo> equipos, Liga liga) {
-        List<Equipo> copia = new ArrayList<>(equipos);
-        Collections.shuffle(copia);
-        Equipo libre = new Equipo("LIBRE");
-        libre.setId(-99);
-        if (copia.size() % 2 != 0) copia.add(libre);
+    public List<Fecha> generarEsqueletoBerger(List<Equipo> equipos, Bloque bloque, Liga liga) {
+        List<Equipo> lista = new ArrayList<>(equipos);
 
+        if (lista.size() % 2 != 0) {
+            Equipo libre = new Equipo();
+            // ID negativo para no chocar con IDs reales
+            libre.setId(-99);
+            lista.add(libre);
+        }
 
-        int n = copia.size();
+        int n = lista.size();
+        int numFechas = n - 1;
         List<Fecha> torneo = new ArrayList<>();
-        for (int i = 0; i < n - 1; i++) {
-            Fecha f = new Fecha(i + 1);
+
+        for (int fechaIdx = 0; fechaIdx < numFechas; fechaIdx++) {
+            Fecha f = new Fecha(fechaIdx + 1);
+            f.setBloque(bloque);
             f.setLiga(liga);
-            for (int j = 0; j < n / 2; j++) {
-                agregarPartido(f, copia.get(j), copia.get(n - 1 - j));
+
+            for (int i = 0; i < n / 2; i++) {
+                Equipo local, visitante;
+                int a = i;
+                int b = n - 1 - i;
+
+                if (i == 0) {
+                    if (fechaIdx % 2 == 0) { local = lista.get(b); visitante = lista.get(a); }
+                    else { local = lista.get(a); visitante = lista.get(b); }
+                } else {
+                    if ((fechaIdx + i) % 2 == 0) { local = lista.get(b); visitante = lista.get(a); }
+                    else { local = lista.get(a); visitante = lista.get(b); }
+                }
+
+                if (local.getId() != -99 && visitante.getId() != -99) {
+                    agregarPartido(f, local, visitante);
+                }
             }
+            rotarBerger(lista);
             torneo.add(f);
-            rotarCircleMethod(copia);
         }
         return torneo;
     }
 
-    private void rotarCircleMethod(List<Equipo> lista) {
-        lista.add(1, lista.remove(lista.size() - 1));
+    private void rotarBerger(List<Equipo> lista) {
+        int n = lista.size();
+        Equipo ultimoMovible = lista.remove(n - 2);
+        lista.add(0, ultimoMovible);
     }
+    private int calcularChoquesNaturales(List<Fecha> torneo) {
+        int choques = 0;
+        for (Fecha f : torneo) {
+            Set<Integer> sedesUsadas = new HashSet<>();
+            for (Partido p : f.getPartidos()) {
+                // Ignorar partidos contra "LIBRE"
+                if (p.getLocal().getId() == -99 || p.getVisitante().getId() == -99) continue;
+
+                int sedeId = ((Number) p.getLocal().getClub().getSede().getId()).intValue();
+
+                // Si add() devuelve false, es porque la sede ya estaba en el Set (Choque detectado)
+                if (!sedesUsadas.add(sedeId)) {
+                    choques++;
+                }
+            }
+        }
+        return choques;
+    }
+    private List<List<Fecha>> generarMejorCombinacionEsqueletos(Map<String, List<Equipo>> agrupados, DiaJuego diaEsperado) {
+        List<List<Equipo>> torneosEquipos = new ArrayList<>();
+        List<Bloque> bloques = new ArrayList<>();
+        List<Liga> ligas = new ArrayList<>();
+
+        // 1. Separar datos
+        for (Map.Entry<String, List<Equipo>> entry : agrupados.entrySet()) {
+            List<Equipo> equipos = entry.getValue();
+            if (!equipos.isEmpty() && equipos.get(0).getDiaDeJuego() == diaEsperado) {
+                torneosEquipos.add(new ArrayList<>(equipos));
+                String[] partes = entry.getKey().split("-");
+                bloques.add(Bloque.valueOf(partes[0]));
+                ligas.add(Liga.valueOf(partes[1]));
+            }
+        }
+
+        if (torneosEquipos.isEmpty()) return new ArrayList<>();
+
+        // 2. Estado inicial (Aleatorio)
+        for (List<Equipo> lista : torneosEquipos) {
+            Collections.shuffle(lista);
+        }
+
+        List<List<Fecha>> mejorSolucion = generarTodasLasFechas(torneosEquipos, bloques, ligas);
+        int minChoques = calcularChoquesGlobales(mejorSolucion);
+
+        System.out.println("Arrancando optimizador con " + minChoques + " choques base...");
+
+        // 3. Algoritmo de Escalada (Hill Climbing) - Permutación Inteligente
+        Random rand = new Random();
+        int iteracionesSinMejora = 0;
+        int MAX_ITERACIONES = 3000;
+
+        for (int i = 0; i < MAX_ITERACIONES; i++) {
+            if (minChoques == 0) break; // Fixture base perfecto alcanzado
+
+            // Elegir un torneo al azar para mutar
+            int tIdx = rand.nextInt(torneosEquipos.size());
+            List<Equipo> torneoMutado = torneosEquipos.get(tIdx);
+
+            if (torneoMutado.size() < 2) continue;
+
+            // Elegir dos posiciones al azar y permutar sus equipos
+            int idx1 = rand.nextInt(torneoMutado.size());
+            int idx2 = rand.nextInt(torneoMutado.size());
+            Collections.swap(torneoMutado, idx1, idx2);
+
+            // Generar nuevo esqueleto evaluarlo
+            List<List<Fecha>> solucionPrueba = generarTodasLasFechas(torneosEquipos, bloques, ligas);
+            int choquesPrueba = calcularChoquesGlobales(solucionPrueba);
+
+            if (choquesPrueba < minChoques) {
+                // Mejora encontrada: Aceptamos el cambio
+                minChoques = choquesPrueba;
+                mejorSolucion = solucionPrueba;
+                iteracionesSinMejora = 0;
+            } else {
+                // Empeoró o quedó igual: Deshacemos el cambio
+                Collections.swap(torneoMutado, idx1, idx2);
+                iteracionesSinMejora++;
+            }
+
+            // Si se estanca en un mínimo local, forzamos un sacudón parcial
+            if (iteracionesSinMejora > 1500) {
+                Collections.shuffle(torneoMutado);
+                iteracionesSinMejora = 0;
+            }
+        }
+
+        System.out.println("Esqueleto final pulido entregado al Backtracker con " + minChoques + " choques base.");
+        return mejorSolucion;
+    }
+
+    private List<List<Fecha>> generarTodasLasFechas(List<List<Equipo>> torneosEquipos, List<Bloque> bloques, List<Liga> ligas) {
+        List<List<Fecha>> todasLasFechas = new ArrayList<>();
+        for (int i = 0; i < torneosEquipos.size(); i++) {
+            // Como le quitamos el shuffle interno a generarEsqueletoBerger,
+            // ahora respeta el orden estricto que le pasa el Hill Climbing.
+            todasLasFechas.add(generarEsqueletoBerger(torneosEquipos.get(i), bloques.get(i), ligas.get(i)));
+        }
+        return todasLasFechas;
+    }
+
 
     private void agregarPartido(Fecha f, Equipo loc, Equipo vis) {
         Partido p = new Partido();
@@ -220,32 +463,103 @@ public class FixtureService {
         f.addPartido(p);
     }
 
+    private Map<String, List<Equipo>> agruparEquiposPorTorneo(List<Equipo> todos) {
+        return todos.stream().collect(Collectors.groupingBy(
+                e -> e.getBloque().name() + "-" + e.getDivisionMayor().name()
+        ));
+    }
+
+    private EstadoFecha inicializarHistorialGlobal(List<List<Fecha>> torneos) {
+        EstadoFecha estado = new EstadoFecha();
+        for (List<Fecha> torneo : torneos) {
+            for (Fecha f : torneo) {
+                for (Partido p : f.getPartidos()) {
+                    estado.getEstadoPorEquipo().putIfAbsent(p.getLocal().getId(), new EstadoEquipo());
+                    estado.getEstadoPorEquipo().putIfAbsent(p.getVisitante().getId(), new EstadoEquipo());
+                }
+            }
+        }
+        return estado;
+    }
+
+    private int calcularPenalizacion(List<List<Fecha>> ligas) {
+        int quiebres = 0;
+        Map<Integer, Integer> ultEstado = new HashMap<>();
+        for (List<Fecha> liga : ligas) {
+            for (Fecha f : liga) {
+                for (Partido p : f.getPartidos()) {
+                    Integer locId = p.getLocal().getId();
+                    Integer visId = p.getVisitante().getId();
+                    if (ultEstado.getOrDefault(locId, 0) == 1) quiebres++;
+                    if (ultEstado.getOrDefault(visId, 0) == -1) quiebres++;
+                    ultEstado.put(locId, 1);
+                    ultEstado.put(visId, -1);
+                }
+            }
+        }
+        return quiebres;
+    }
+
+    private List<List<Fecha>> clonarTodasLasFechas(List<List<Fecha>> originales) {
+        List<List<Fecha>> copiasMulti = new ArrayList<>();
+        for (List<Fecha> ligaOriginal : originales) {
+            List<Fecha> copias = new ArrayList<>();
+            for (Fecha f : ligaOriginal) {
+                Fecha copiaF = new Fecha(f.getNroFecha());
+                copiaF.setLiga(f.getLiga());
+                copiaF.setBloque(f.getBloque());
+                for (Partido p : f.getPartidos()) {
+                    Partido copiaP = new Partido();
+                    copiaP.setLocal(p.getLocal());
+                    copiaP.setVisitante(p.getVisitante());
+                    copiaP.setCancha(p.getCancha());
+                    copiaP.setFecha(copiaF);
+                    copiaF.getPartidos().add(copiaP);
+                }
+                copias.add(copiaF);
+            }
+            copiasMulti.add(copias);
+        }
+        return copiasMulti;
+    }
+
     private void persistirFixture(List<Fecha> fechas) {
         fechaRepository.saveAll(fechas);
     }
 
-    public @Nullable List<Equipo> getEquipos() {
+    // Método de proyección para frontend
+    public List<FechaDTO> obtenerFixturePorCategoria(Liga liga, Categoria categoriaSolicitada) {
+        Bloque bloque = determinarBloque(categoriaSolicitada);
+        List<Fecha> fechasMaestras = fechaRepository.findAllByLigaAndBloqueOrderByNroFechaAsc(liga, bloque);
+        List<FechaDTO> fixtureProyectado = new ArrayList<>();
 
-        return equipoRepository.findAll();
+        for (Fecha f : fechasMaestras) {
+            FechaDTO fDto = new FechaDTO(f.getNroFecha(), f.getLiga().name());
+            for (Partido p : f.getPartidos()) {
+                Equipo local = p.getLocal();
+                Equipo visitante = p.getVisitante();
+                boolean localTiene = local.getCategoriasHabilitadas().contains(categoriaSolicitada);
+                boolean visitanteTiene = visitante.getCategoriasHabilitadas().contains(categoriaSolicitada);
 
+                if (localTiene && visitanteTiene) {
+                    fDto.addPartido(new PartidoDTO(local.getNombre(), visitante.getNombre(), p.getCancha().getName()));
+                } else if (localTiene && !visitanteTiene) {
+                    fDto.addPartido(new PartidoDTO(local.getNombre(), "LIBRE", "LIBRE_VISITANTE"));
+                } else if (!localTiene && visitanteTiene) {
+                    fDto.addPartido(new PartidoDTO("LIBRE", visitante.getNombre(), "LIBRE_LOCAL"));
+                }
+            }
+            fixtureProyectado.add(fDto);
+        }
+        return fixtureProyectado;
     }
 
-    public List<FechaDTO> obtenerFixture(Liga liga) {
-        liga = liga == null ? Liga.A : liga;
-        List<Fecha> fechas = fechaRepository.findAllByLigaOrderByNroFechaAsc(liga);
-        return fechas.stream()
-
-                .map(FixtureMapper::toFechaDTO)
-
-                .toList();
-
-    }
-    // Clase interna para agrupar el estado de la generación
+    // Contexto
     private class GeneracionContexto {
-        List<Fecha> mejorSolucionA;
-        List<Fecha> mejorSolucionB;
+        List<List<Fecha>> mejorSolucion;
         int menorQuiebres = Integer.MAX_VALUE;
         long fin;
+        boolean abortar = false;
 
         public GeneracionContexto(long duracionMs) {
             this.fin = System.currentTimeMillis() + duracionMs;
