@@ -9,6 +9,11 @@ public class JobStatusDTO {
         this.mensaje = mensaje;
     }
 
-    public String getEstado() { return estado; }
-    public String getMensaje() { return mensaje; }
+    public String getEstado() {
+        return estado;
+    }
+
+    public String getMensaje() {
+        return mensaje;
+    }
 }

@@ -6,7 +6,6 @@ import com.fixture.fixturesservice.entities.*;
 import com.fixture.fixturesservice.enums.*;
 import com.fixture.fixturesservice.repositories.*;
 import jakarta.transaction.Transactional;
-import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

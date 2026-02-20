@@ -3,12 +3,14 @@ package com.fixture.fixturesservice.controllers;
 import com.fixture.fixturesservice.DTOS.EquipoDTO;
 import com.fixture.fixturesservice.DTOS.FechaDTO;
 import com.fixture.fixturesservice.DTOS.ResponseDTO;
-import com.fixture.fixturesservice.entities.Equipo;
+import com.fixture.fixturesservice.DTOS.JobStatusDTO;
 import com.fixture.fixturesservice.enums.Categoria;
 import com.fixture.fixturesservice.enums.Liga;
 import com.fixture.fixturesservice.services.DataInitializer;
 import com.fixture.fixturesservice.services.ExcelService;
 import com.fixture.fixturesservice.services.FixtureService;
+import com.fixture.fixturesservice.services.OrToolsFixtureService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -30,11 +32,11 @@ public class FixtureController {
     @Autowired
     private FixtureService fixtureService;
     @Autowired
-    private com.fixture.fixturesservice.services.OrToolsFixtureService orToolsFixtureService;
-    @Autowired
     private ExcelService excelService;
     @Autowired
     private DataInitializer dataInitializer;
+    @Autowired
+    private OrToolsFixtureService orToolsService;
 
     @GetMapping("/generar")
     public ResponseEntity<ResponseDTO> generarFixture() {
@@ -43,19 +45,19 @@ public class FixtureController {
 
     @GetMapping("/generar-ortools")
     public ResponseEntity<?> generarFixtureOrTools() {
-// 1. Generamos un ID único para este trabajo
+        // 1. Generamos un ID único para este trabajo
         String jobId = UUID.randomUUID().toString();
-        
+
         // 2. Disparamos el hilo en segundo plano
         orToolsService.generarFixtureAsync(jobId);
-        
+
         // 3. Devolvemos el jobId inmediatamente (HTTP 202 Accepted)
         return ResponseEntity.accepted().body(Map.of(
-            "jobId", jobId,
-            "status", "PROCESSING",
-            "message", "Generación iniciada en segundo plano."
-        ));   
+                "jobId", jobId,
+                "status", "PROCESSING",
+                "message", "Generación iniciada en segundo plano."));
     }
+
     @GetMapping("/status/{jobId}")
     public ResponseEntity<JobStatusDTO> consultarEstado(@PathVariable String jobId) {
         JobStatusDTO status = orToolsService.obtenerEstadoTrabajo(jobId);
