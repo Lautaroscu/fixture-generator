@@ -1,7 +1,5 @@
 package com.fixture.fixturesservice;
 
-import com.fixture.fixturesservice.services.FixtureService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
