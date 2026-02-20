@@ -47,12 +47,10 @@ public class DataInitializer {
         InputStream is = new ClassPathResource("data/equipos.json").getInputStream();
         EquiposConfig config = mapper.readValue(is, EquiposConfig.class);
 
-        // 1. ACÁ AGREGAMOS LOS BLOQUES FEMENINOS
         Map<Bloque, List<String>> definicionBloques = Map.of(
                 Bloque.MAYORES, List.of("primera", "reserva"),
                 Bloque.JUVENILES, List.of("quinta", "sexta", "septima", "octava"),
                 Bloque.INFANTILES, List.of("novena", "decima", "undecima"),
-                // ¡IMPORTANTE! Agregar esto para que lea el femenino
                 Bloque.FEM_MAYORES, List.of("femenino_primera", "femenino_sub16"),
                 Bloque.FEM_MENORES, List.of("femenino_sub14", "femenino_sub12")
         );
@@ -66,24 +64,22 @@ public class DataInitializer {
                 canchaRepository.save(cancha);
             }
 
-            Club club = clubRepo.findByNombre(ec.nombre).orElseGet(() -> {
+            String nombreClubBD = (ec.clubPadre != null && !ec.clubPadre.isEmpty()) ? ec.clubPadre : ec.nombre;
+
+            Club club = clubRepo.findByNombre(nombreClubBD).orElseGet(() -> {
                 Club nuevoClub = new Club();
-                nuevoClub.setNombre(ec.nombre);
+                nuevoClub.setNombre(nombreClubBD);
                 nuevoClub.setSede(cancha);
                 return clubRepo.save(nuevoClub);
             });
 
-           // Iteramos sobre TODOS los bloques (Masc y Fem)
             for (Map.Entry<Bloque, List<String>> def : definicionBloques.entrySet()) {
                 Bloque tipoBloque = def.getKey();
                 List<String> categoriasDelBloque = def.getValue();
 
-                // Filtramos y MAPEAMOS los nombres
                 Set<Categoria> habilitadas = categoriasDelBloque.stream()
                         .filter(catKey -> ec.categorias.containsKey(catKey) && Boolean.TRUE.equals(ec.categorias.get(catKey)))
                         .map(catKey -> {
-                            // TRANSFORMACIÓN DE NOMBRE JSON -> ENUM
-                            // Si en el JSON dice "femenino_primera", lo convertimos a "FEM_PRIMERA" (o como esté en tu Enum)
                             if (catKey.startsWith("femenino_")) {
                                 return Categoria.valueOf("FEM_" + catKey.replace("femenino_", "").toUpperCase());
                             }
@@ -91,25 +87,26 @@ public class DataInitializer {
                         })
                         .collect(Collectors.toSet());
 
-                // Si tiene categorías habilitadas, creamos el "Equipo" (Bloque)
                 if (!habilitadas.isEmpty()) {
                     Equipo equipo = new Equipo();
-                    equipo.setClub(club); // Usamos el club que creamos arriba
+
+                    equipo.setNombre(ec.nombre);
+                    equipo.setClub(club);
+
                     equipo.setBloque(tipoBloque);
                     equipo.setCategoriasHabilitadas(habilitadas);
-                    equipo.setNombre(ec.nombre);
-                    // --- ASIGNACIÓN INTELIGENTE DE LIGA ---
+
                     // --- ASIGNACIÓN INTELIGENTE DE LIGA ---
                     if (tipoBloque == Bloque.FEM_MAYORES || tipoBloque == Bloque.FEM_MENORES) {
                         equipo.setDivisionMayor(Liga.A);
                     }
                     else if (tipoBloque == Bloque.INFANTILES && ec.divisionInfantiles != null && !ec.divisionInfantiles.isEmpty()) {
-                        // Forzamos mayúscula para evitar errores de tipeo en el JSON
                         equipo.setDivisionMayor(Liga.valueOf(ec.divisionInfantiles.toUpperCase()));
                     }
                     else {
                         equipo.setDivisionMayor(Liga.valueOf(ec.divisionMayor.toUpperCase()));
                     }
+
                     // Asignamos días de juego
                     if (tipoBloque == Bloque.JUVENILES || tipoBloque == Bloque.FEM_MAYORES || tipoBloque == Bloque.FEM_MENORES) {
                         equipo.setDiaDeJuego(DiaJuego.SABADO);

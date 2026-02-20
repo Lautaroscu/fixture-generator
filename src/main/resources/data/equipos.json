@@ -3,16 +3,36 @@
     {
       "nombre": "Loma Negra",
       "divisionMayor": "B",
+      "divisionInfantiles": "A",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Filadelfio Mondellio",
+      "jerarquia": 1
+    },
+    {
+      "nombre": "Loma Negra Inferiores",
+      "divisionMayor": "A",
+      "clubPadre": "Loma Negra",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": true,
         "octava": false,
         "novena": false,
-        "decima": true,
-        "undecima": false,
+        "decima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Filadelfio Mondellio",
+      "jerarquia": 1
+    },
+    {
+      "nombre": "Loma Negra Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "Loma Negra",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": false,
         "femenino_sub14": false,
@@ -20,11 +40,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Filadelfio Mondellio",
-      "jerarquia": 1,
-      "restricciones": [
-        "Cuando la primera hace de local inferiores tiene que ser de local por mas que sean rivales distintos en AyB",
-        "Comparte cancha con Loma Negra: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 1
     },
     {
       "nombre": "Independiente",
@@ -62,14 +78,7 @@
         "quinta": true,
         "sexta": false,
         "septima": true,
-        "octava": true,
-        "novena": true,
-        "decima": true,
-        "undecima": true,
-        "femenino_primera": true,
-        "femenino_sub16": true,
-        "femenino_sub14": true,
-        "femenino_sub12": true
+        "octava": true
       },
       "estadioPropio": false,
       "estadioLocal": "Quinta La Florida",
@@ -80,6 +89,43 @@
         "Comparte cancha con Deportivo Tandil: conflicto de sede",
         "Comparte cancha con Defensores del Cerro: conflicto de sede"
       ]
+    },
+    {
+      "nombre": "Juventud Unida Fem (Blanco)",
+      "divisionMayor": "A",
+      "categorias": {
+        "femenino_primera": true,
+        "femenino_sub16": true,
+        "femenino_sub14": true,
+        "femenino_sub12": true
+      },
+      "estadioPropio": false,
+      "estadioLocal": "Figueroa",
+      "jerarquia": 8
+    },
+    {
+      "nombre": "Juventud Unida Fem (Negro)",
+      "divisionMayor": "A",
+      "clubPadre": "Juventud Unida",
+      "categorias": {
+        "femenino_sub14": true,
+        "femenino_sub12": true
+      },
+      "estadioPropio": false,
+      "estadioLocal": "Quinta La Florida",
+      "jerarquia": 8
+    },
+    {
+      "nombre": "Juventud Unida Infantiles",
+      "divisionMayor": "A",
+      "categorias": {
+        "novena": true,
+        "decima": true,
+        "undecima": true
+      },
+      "estadioPropio": false,
+      "estadioLocal": "Juve Stadium",
+      "jerarquia": 8
     },
     {
       "nombre": "Santamarina",
@@ -101,19 +147,24 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Predio Centenario",
-      "jerarquia": 7,
-      "restricciones": [
-        "Fem Indep sigue a Indep Rojo",
-        "Comparte cancha con Oficina: cuando uno es local el otro es visitante",
-        "Comparte cancha con Santamarina: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 7
     },
     {
       "nombre": "Argentino",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Doce de Noviembre",
+      "jerarquia": 3
+    },
+    {
+      "nombre": "Argentino Inferiores",
+      "divisionMayor": "A",
+      "clubPadre": "Argentino",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": false,
@@ -124,10 +175,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Doce de Noviembre",
-      "jerarquia": 3,
-      "restricciones": [
-        "DEFENSORES Y ALUMNI CUENTA COMO 1 EQUIPO EN INFANTILES, cuando defensores es local con sus categorías alumni tambien (tienen que compartir rival)"
-      ]
+      "jerarquia": 3
     },
     {
       "nombre": "UNICEN",
@@ -145,38 +193,48 @@
       },
       "estadioPropio": true,
       "estadioLocal": "La Movediza",
-      "jerarquia": 4,
-      "restricciones": [
-        "DEPORTIVO RAUCH Y ATENEO CUENTA COMO 1 EQUIPO EN INFANTILES, cuando defensores es local con sus categorías alumni tambien (tienen que compartir rival)",
-        "Comparte cancha con Grupo Universitario: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 4
     },
     {
       "nombre": "San José",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": false,
+      "estadioLocal": "Excursionistas",
+      "jerarquia": 9
+    },
+    {
+      "nombre": "San José Inferiores",
+      "divisionMayor": "A",
+      "clubPadre": "San José",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": true,
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": false,
+      "estadioLocal": "Excursionistas",
+      "jerarquia": 9
+    },
+    {
+      "nombre": "San José Femenino",
+      "divisionMayor": "A",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
         "femenino_sub12": true
       },
       "estadioPropio": false,
-      "estadioLocal": "Excursionistas",
-      "jerarquia": 9,
-      "restricciones": [
-        "Femenino de loma hace de local mismo dia que primera masculino",
-        "Comparte cancha con Excursionistas: cuando uno es local el otro es visitante",
-        "Comparte cancha con Deportivo San José: cuando uno es local el otro es visitante"
-      ]
+      "estadioLocal": "Quinta La Florida",
+      "jerarquia": 9
     },
     {
       "nombre": "Ferrocarril Sud",
@@ -198,12 +256,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Damaso Latasa",
-      "jerarquia": 10,
-      "restricciones": [
-        "Femenino es indiferente que juegue sabado o domingo",
-        "Comparte cancha con Ferrocarril Sud (azul): cuando uno es local el otro es visitante",
-        "Comparte cancha con Ferrocarril Sud: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 10
     },
     {
       "nombre": "Gimnasia y Esgrima",
@@ -225,11 +278,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Predio Jorge Ibañes",
-      "jerarquia": 6,
-      "restricciones": [
-        "Ferro Azul opuesto a Ferro es decir si ferro azul es local, ferro es visitante",
-        "Comparte cancha con Gimnasia y Esgrima: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 6
     },
     {
       "nombre": "Juarense",
@@ -251,11 +300,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Gaston Lafon",
-      "jerarquia": 11,
-      "restricciones": [
-        "Fem Ferro sigue a Ferro Azul",
-        "Comparte cancha con Juarense: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 11
     },
     {
       "nombre": "Excursionistas",
@@ -277,19 +322,24 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Excursionistas",
-      "jerarquia": 5,
-      "restricciones": [
-        "Si Def Cerro, es local Herederos es local (Cerro el domingo, Herederos el sabado)",
-        "Comparte cancha con San José: cuando uno es local el otro es visitante",
-        "Comparte cancha con Excursionistas: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 5
     },
     {
       "nombre": "Deportivo Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Figueroa",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "Deportivo Tandil Inferiores",
+      "divisionMayor": "B",
+      "clubPadre": "Deportivo Tandil",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": true,
@@ -300,18 +350,24 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Figueroa",
-      "jerarquia": 0,
-      "restricciones": [
-        "cuando juventud unida no juega en sistetico, juventud negro juega en sintetico",
-        "Comparte cancha con Herederos, Defensores del Cerro: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "Velense",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Doc Miguel Ochoa",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "Velense Inferiores",
+      "divisionMayor": "B",
+      "clubPadre": "Velense",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": true,
@@ -322,10 +378,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Doc Miguel Ochoa",
-      "jerarquia": 0,
-      "restricciones": [
-        "cuando juega juventud negro en sintetico, san jose juega con grupo en movediza"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "Independiente (rojo)",
@@ -343,10 +396,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Agustin F Berroeta",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con Independiente: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "Unión y Progreso",
@@ -364,10 +414,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Quinta La Florida",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con Juventud Unida: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "Oficina",
@@ -385,50 +432,47 @@
       },
       "estadioPropio": false,
       "estadioLocal": "Predio Centenario",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con Santamarina: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "Defensores del Cerro",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
-        "reserva": true,
-        "quinta": true,
-        "sexta": false,
-        "septima": true,
-        "octava": false,
-        "novena": true,
-        "decima": true,
-        "undecima": true
+        "reserva": true
       },
       "estadioPropio": false,
       "estadioLocal": "Figueroa",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con Herederos, Deportivo Tandil: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "Alumni",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
-        "reserva": true,
-        "quinta": false,
+        "reserva": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Ferroviarios",
+      "jerarquia": 0,
+      "restricciones": []
+    },
+    {
+      "nombre": "Alumni/Defensores del Cerro Inferiores",
+      "divisionMayor": "B",
+      "clubPadre": "Alumni",
+      "categorias": {
+        "quinta": true,
         "sexta": false,
         "septima": false,
         "octava": false,
-        "novena": false,
+        "novena": true,
         "decima": true,
         "undecima": true
       },
       "estadioPropio": true,
-      "estadioLocal": "Alumni",
-      "jerarquia": 0,
-      "restricciones": []
+      "estadioLocal": "Ferroviarios",
+      "jerarquia": 0
     },
     {
       "nombre": "Grupo Universitario",
@@ -436,28 +480,34 @@
       "categorias": {
         "primera": true,
         "reserva": true,
-        "quinta": false,
-        "sexta": true,
+        "quinta": true,
+        "sexta": false,
         "septima": true,
-        "octava": false,
+        "octava": true,
         "novena": true,
         "decima": true,
         "undecima": true
       },
       "estadioPropio": false,
       "estadioLocal": "La Movediza",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con UNICEN: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "SARMIENTO (AYACUCHO)",
       "divisionMayor": "A",
-      "divisionInfantiles": "C",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": false,
+      "estadioLocal": "Municipal Ayacucho",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "SARMIENTO (AYACUCHO) Inferiores",
+      "divisionMayor": "C",
+      "clubPadre": "SARMIENTO (AYACUCHO)",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": true,
@@ -468,18 +518,24 @@
       },
       "estadioPropio": false,
       "estadioLocal": "Municipal Ayacucho",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con ATENEO ESTRADA: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "DEFENSORES DE AYACUCHO",
       "divisionMayor": "A",
-      "divisionInfantiles": "C",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Defensores",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "DEFENSORES DE AYACUCHO Inferiores",
+      "divisionMayor": "C",
+      "clubPadre": "DEFENSORES DE AYACUCHO",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": true,
@@ -490,65 +546,80 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Defensores",
-      "jerarquia": 0,
-      "restricciones": []
+      "jerarquia": 0
     },
     {
       "nombre": "DEPORTIVO RAUCH",
       "divisionMayor": "B",
-      "divisionInfantiles": "C",
       "categorias": {
         "primera": true,
-        "reserva": true,
-        "quinta": true,
-        "sexta": false,
-        "septima": true,
-        "octava": false,
-        "novena": true,
-        "decima": false,
-        "undecima": false
+        "reserva": true
       },
       "estadioPropio": true,
       "estadioLocal": "Municipal rauch",
-      "jerarquia": 0,
-      "restricciones": []
+      "jerarquia": 0
     },
     {
       "nombre": "ATENEO ESTRADA",
       "divisionMayor": "B",
-      "divisionInfantiles": "C",
       "categorias": {
         "primera": true,
-        "reserva": true,
-        "quinta": false,
+        "reserva": true
+      },
+      "estadioPropio": false,
+      "estadioLocal": "Municipal Ayacucho",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "ATENEO ESTRADA/Deportivo Rauch Inferiores",
+      "divisionMayor": "C",
+      "clubPadre": "ATENEO ESTRADA",
+      "categorias": {
+        "quinta": true,
         "sexta": true,
-        "septima": false,
+        "septima": true,
         "octava": false,
-        "novena": false,
+        "novena": true,
         "decima": true,
         "undecima": true
       },
       "estadioPropio": false,
       "estadioLocal": "Municipal Ayacucho",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con SARMIENTO (AYACUCHO): cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "ATLETICO AYACUCHO",
       "divisionMayor": "A",
-      "divisionInfantiles": "C",
       "categorias": {
         "primera": true,
-        "reserva": true,
+        "reserva": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Luciano Ceverio",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "ATLETICO AYACUCHO Inferiores",
+      "divisionMayor": "C",
+      "clubPadre": "ATLETICO AYACUCHO",
+      "categorias": {
         "quinta": true,
         "sexta": true,
         "septima": true,
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Luciano Ceverio",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "ATLETICO AYACUCHO Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "ATLETICO AYACUCHO",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
@@ -556,47 +627,26 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Luciano Ceverio",
-      "jerarquia": 0,
-      "restricciones": [
-        "Comparte cancha con Atlético Ayacucho: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
       "nombre": "SAN LORENZO (RAUCH)",
       "divisionMayor": "B",
-      "divisionInfantiles": "C",
       "categorias": {
         "primera": true,
-        "reserva": true,
-        "quinta": true,
-        "sexta": true,
-        "septima": true,
-        "octava": true,
-        "novena": true,
-        "decima": true,
-        "undecima": true,
-        "femenino_primera": false,
-        "femenino_sub16": true,
-        "femenino_sub14": false,
-        "femenino_sub12": false
+        "reserva": true
       },
       "estadioPropio": true,
       "estadioLocal": "SAN LORENZO Stadium",
-      "jerarquia": 0,
-      "restricciones": [
-        "Primera A 12 equipos ida y vuelta",
-        "Comparte cancha con San Lorenzo de Rauch: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     },
     {
-      "nombre": "BOTAFOGO F.C.",
-      "divisionMayor": "B",
-      "divisionInfantiles": "C",
+      "nombre": "SAN LORENZO (RAUCH) Inferiores",
+      "divisionMayor": "C",
+      "clubPadre": "SAN LORENZO (RAUCH)",
       "categorias": {
-        "primera": true,
-        "reserva": true,
         "quinta": true,
-        "sexta": false,
+        "sexta": true,
         "septima": true,
         "octava": true,
         "novena": true,
@@ -604,11 +654,50 @@
         "undecima": true
       },
       "estadioPropio": true,
+      "estadioLocal": "SAN LORENZO Stadium",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "SAN LORENZO (RAUCH) Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "SAN LORENZO (RAUCH)",
+      "categorias": {
+        "femenino_primera": false,
+        "femenino_sub16": true,
+        "femenino_sub14": false,
+        "femenino_sub12": false
+      },
+      "estadioPropio": true,
+      "estadioLocal": "SAN LORENZO Stadium",
+      "jerarquia": 0
+    },
+    {
+      "nombre": "BOTAFOGO F.C.",
+      "divisionMayor": "B",
+      "categorias": {
+        "primera": true,
+        "reserva": true
+      },
+      "estadioPropio": true,
       "estadioLocal": "BOTAFOGO F.C Stadium",
-      "jerarquia": 0,
-      "restricciones": [
-        "Primera B 14 equipos ida y vuelta"
-      ]
+      "jerarquia": 0
+    },
+    {
+      "nombre": "BOTAFOGO F.C. Inferiores",
+      "divisionMayor": "C",
+      "clubPadre": "BOTAFOGO F.C.",
+      "categorias": {
+        "quinta": true,
+        "sexta": true,
+        "septima": true,
+        "octava": false,
+        "novena": true,
+        "decima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "BOTAFOGO Stadium",
+      "jerarquia": 0
     },
     {
       "nombre": "Ferrocarril Sud (azul)",
@@ -626,25 +715,12 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Damaso Latasa",
-      "jerarquia": 12,
-      "restricciones": [
-        "herederos (inferiores) va cruzado con deportivo tandil en cancha figeroa/ mismo fin de semana que defensores del cerro (mayores domingo)",
-        "Comparte cancha con Ferrocarril Sud: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 12
     },
     {
       "nombre": "El Potrero",
       "divisionMayor": "A",
       "categorias": {
-        "primera": false,
-        "reserva": false,
-        "quinta": false,
-        "sexta": false,
-        "septima": false,
-        "octava": false,
-        "novena": false,
-        "decima": false,
-        "undecima": false,
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
@@ -652,8 +728,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Boca de la Base",
-      "jerarquia": 2,
-      "restricciones": []
+      "jerarquia": 2
     },
     {
       "nombre": "Herederos",
@@ -671,11 +746,7 @@
       },
       "estadioPropio": false,
       "estadioLocal": "Herederos Stadium",
-      "jerarquia": 0,
-      "restricciones": [
-        "juventud unida cruzado con union y progreso en la florida/ ese mismo dia algunas categorías van al sintetico",
-        "Comparte cancha con Deportivo Tandil, Defensores del Cerro: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 0
     }
   ]
 }

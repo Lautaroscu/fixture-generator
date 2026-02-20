@@ -8,6 +8,7 @@ public class EquipoConfig {
     public String divisionMayor; // "A" | "B"
     public Map<String, Boolean> categorias;
     public boolean estadioPropio;
+    public String clubPadre;
     public String estadioLocal;
     public String divisionInfantiles; // <--- AGREGAR ESTO
     public int jerarquia;
