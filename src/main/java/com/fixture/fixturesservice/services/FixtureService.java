@@ -267,7 +267,7 @@ public class FixtureService {
         EstadoEquipo el = estadoFecha.getEstado(loc.getId());
         EstadoEquipo ev = estadoFecha.getEstado(vis.getId());
 
-        if (el.getUltimasConsecutivas() >= 2 || ev.getUltimasConsecutivas() <= -2) {
+        if (el.getUltimasConsecutivas() >= 3 || ev.getUltimasConsecutivas() <= -3) {
             return false;
         }
 
