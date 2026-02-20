@@ -3,7 +3,6 @@
     {
       "nombre": "Loma Negra",
       "divisionMayor": "B",
-      "divisionInfantiles": "A",
       "categorias": {
         "primera": true,
         "reserva": true
@@ -54,7 +53,17 @@
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Agustin F Berroeta",
+      "jerarquia": 2
+    },
+    {
+      "nombre": "Independiente Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "Independiente",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
@@ -62,12 +71,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Agustin F Berroeta",
-      "jerarquia": 2,
-      "restricciones": [
-        "Los que equipos comparten cancha, cuando uno es local el otro es visitante (obligatorio)",
-        "Comparte cancha con Independiente (rojo): cuando uno es local el otro es visitante",
-        "Comparte cancha con Independiente: cuando uno es local el otro es visitante"
-      ]
+      "jerarquia": 2
     },
     {
       "nombre": "Juventud Unida",
@@ -82,13 +86,7 @@
       },
       "estadioPropio": false,
       "estadioLocal": "Quinta La Florida",
-      "jerarquia": 8,
-      "restricciones": [
-        "Si Ind negro es local Ind rojo es visitante, Rojo va a ser local",
-        "Comparte cancha con Unión y Progreso: cuando uno es local el otro es visitante",
-        "Comparte cancha con Deportivo Tandil: conflicto de sede",
-        "Comparte cancha con Defensores del Cerro: conflicto de sede"
-      ]
+      "jerarquia": 8
     },
     {
       "nombre": "Juventud Unida Fem (Blanco)",
@@ -139,7 +137,17 @@
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Predio Centenario",
+      "jerarquia": 7
+    },
+    {
+      "nombre": "Santamarina Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "Santamarina",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
@@ -248,7 +256,17 @@
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Damaso Latasa",
+      "jerarquia": 10
+    },
+    {
+      "nombre": "Ferrocarril Sud Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "Ferrocarril Sud",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
@@ -270,7 +288,17 @@
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Predio Jorge Ibañes",
+      "jerarquia": 6
+    },
+    {
+      "nombre": "Gimnasia y Esgrima Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "Gimnasia y Esgrima",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
@@ -292,7 +320,17 @@
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Gaston Lafon",
+      "jerarquia": 11
+    },
+    {
+      "nombre": "Juarense Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "Juarense",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": true,
         "femenino_sub14": true,
@@ -314,7 +352,17 @@
         "octava": true,
         "novena": true,
         "decima": true,
-        "undecima": true,
+        "undecima": true
+      },
+      "estadioPropio": true,
+      "estadioLocal": "Excursionistas",
+      "jerarquia": 5
+    },
+    {
+      "nombre": "Excursionistas Femenino",
+      "divisionMayor": "A",
+      "clubPadre": "Excursionistas",
+      "categorias": {
         "femenino_primera": true,
         "femenino_sub16": false,
         "femenino_sub14": true,
@@ -454,8 +502,7 @@
       },
       "estadioPropio": true,
       "estadioLocal": "Ferroviarios",
-      "jerarquia": 0,
-      "restricciones": []
+      "jerarquia": 0
     },
     {
       "nombre": "Alumni/Defensores del Cerro Inferiores",
@@ -696,11 +743,11 @@
         "undecima": true
       },
       "estadioPropio": true,
-      "estadioLocal": "BOTAFOGO Stadium",
+      "estadioLocal": "BOTAFOGO F.C Stadium",
       "jerarquia": 0
     },
     {
-      "nombre": "Ferrocarril Sud (azul)",
+      "nombre": "Ferro Azul",
       "divisionMayor": "B",
       "categorias": {
         "primera": false,
