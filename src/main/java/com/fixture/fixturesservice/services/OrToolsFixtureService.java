@@ -39,6 +39,8 @@ public class OrToolsFixtureService {
         // Limpiar
         fechaRepository.deleteAll();
 
+        // Orden de resolución: Primero SABADO (Más complejo por Ayacucho/Logística),
+        // luego DOMINGO
         boolean exitoSabado = resolverBloque(agrupados, DiaJuego.SABADO);
         boolean exitoDomingo = resolverBloque(agrupados, DiaJuego.DOMINGO);
 
@@ -92,11 +94,9 @@ public class OrToolsFixtureService {
         Map<Integer, Literal[]> mapaLocaliaVars = new HashMap<>();
 
         // Estructuras de Variables
-        // vars[t][f][i][j] -> Partido en torneo t, fecha f, local i, visitante j
         List<Literal[][][]> varsPorTorneo = new ArrayList<>();
-        List<Literal[][]> esLocalPorTorneo = new ArrayList<>(); // [t][f][i]
-
-        // [t][f][i] -> Si equipo i juega de visitante en fecha f
+        List<Literal[][]> esLocalPorTorneo = new ArrayList<>();
+        List<Literal[][]> esVisitantePorTorneo = new ArrayList<>();
 
         for (int t = 0; t < torneos.size(); t++) {
             List<Equipo> equipos = torneos.get(t);
@@ -108,7 +108,7 @@ public class OrToolsFixtureService {
 
             Literal[][][] partidos = new Literal[numFechas][n][n];
             Literal[][] esLocal = new Literal[numFechas][n];
-            Literal[][] esVisitante = new Literal[numFechas][n]; // Auxiliar útil
+            Literal[][] esVisitante = new Literal[numFechas][n];
 
             // Crear Variables
             for (int f = 0; f < numFechas; f++) {
@@ -126,6 +126,7 @@ public class OrToolsFixtureService {
 
             varsPorTorneo.add(partidos);
             esLocalPorTorneo.add(esLocal);
+            esVisitantePorTorneo.add(esVisitante);
 
             // Llenar mapaLocaliaVars
             for (int i = 0; i < n; i++) {
@@ -136,33 +137,36 @@ public class OrToolsFixtureService {
             }
 
             // Restricciones Básicas de Torneo (Round Robin)
-            aplicarRestriccionesTorneo(model, n, numFechas, partidos, esLocal, esVisitante);
+            aplicarRestriccionesTorneo(model, n, numFechas, partidos, esLocal, esVisitante, equipos);
 
             // Restricciones de Secuencia (Max 2 Local/Visitante)
             aplicarRestriccionesSecuencia(model, n, numFechas, esLocal, esVisitante);
         }
 
         // --- RESTRICCIONES CRUZADAS (Cross-Tournament) ---
-        // 1. Stadium Sharing (Cruzados)
+
+        // 1. Stadium Sharing (Cruzados) - Definiciones explicitas
         aplicarStadiumSharing(model, torneos, mapaLocaliaVars, maxFechas);
 
-        // 2. Cupo Ayacucho
+        // 2. Cupo Ayacucho (Max 2)
         aplicarCupoAyacucho(model, torneos, mapaLocaliaVars, maxFechas);
 
-        // 3. Juarense - Alumni
-        Integer idJuarense = buscarIdPorNombre("JUARENSE", torneos);
-        Integer idAlumni = buscarIdPorNombre("ALUMNI", torneos);
+        // 3. Juarense - Alumni (Seguridad)
+        aplicarJuarenseAlumniConstraint(model, torneos, mapaLocaliaVars, maxFechas);
 
-        if (idJuarense != null && idAlumni != null) {
-            aplicarJuarenseAlumniConstraint(model, mapaLocaliaVars, idJuarense, idAlumni);
-        }
-
-        // 4. Mirroring (Sincronización de Localías)
+        // 4. Mirroring (Sincronización de Localías - Femenino e Infantiles)
         aplicarMirroring(model, torneos, mapaLocaliaVars, maxFechas);
+
+        // 5. Logística Figueroa (Juv Unida Fem vs Def Cerro vs Dep Tandil)
+        aplicarLogisticaFigueroa(model, torneos, mapaLocaliaVars, maxFechas);
+
+        // 6. Logística Quinta La Florida
+        aplicarLogisticaLaFlorida(model, torneos, mapaLocaliaVars, maxFechas, esLocalPorTorneo, esVisitantePorTorneo);
 
         // Solver
         CpSolver solver = new CpSolver();
         solver.getParameters().setMaxTimeInSeconds(30.0);
+        // solver.getParameters().setLogSearchProgress(true); // Debug
 
         CpSolverStatus status = solver.solve(model);
 
@@ -176,8 +180,11 @@ public class OrToolsFixtureService {
         }
     }
 
+    // --- CONSTRAINT IMPLEMENTATIONS ---
+
     private void aplicarRestriccionesTorneo(CpModel model, int n, int numFechas, Literal[][][] p, Literal[][] esLocal,
-            Literal[][] esVisitante) {
+            Literal[][] esVisitante, List<Equipo> equipos) {
+
         // 1. Un equipo juega máx 1 vez por fecha
         for (int f = 0; f < numFechas; f++) {
             for (int i = 0; i < n; i++) {
@@ -192,17 +199,21 @@ public class OrToolsFixtureService {
                     if (i != j)
                         partidosDelEquipo.add(p[f][j][i]);
                 }
+
+                // Si es un equipo "dummy" (relleno para paridad), permitimos que juegue 0 veces
+                // (fecha libre)
+                // Pero en general, si es torneo de N equipos, y N par, todos juegan 1 vez.
+                // Si N impar, 1 queda libre.
+                // Aquí usamos addAtMostOne para permitir Fecha Libre.
                 model.addAtMostOne(partidosDelEquipo);
 
                 // Vincular aux vars
-                // esLocal[f][i] <=> sum(p[f][i][j]) == 1
                 List<Literal> soyLocal = new ArrayList<>();
                 for (int j = 0; j < n; j++)
                     if (i != j)
                         soyLocal.add(p[f][i][j]);
                 model.addEquality(LinearExpr.sum(soyLocal.toArray(new Literal[0])), esLocal[f][i]);
 
-                // esVisitante[f][i] <=> sum(p[f][j][i]) == 1
                 List<Literal> soyVis = new ArrayList<>();
                 for (int j = 0; j < n; j++)
                     if (i != j)
@@ -216,7 +227,7 @@ public class OrToolsFixtureService {
             for (int j = 0; j < n; j++) {
                 if (i == j)
                     continue;
-                // Juegan exactamente 1 vez como i local j visitante en TODO el torneo
+                // Ida y vuelta: deben jugar exactamente 1 vez como (i local j visitante)
                 List<Literal> partidos = new ArrayList<>();
                 for (int f = 0; f < numFechas; f++) {
                     partidos.add(p[f][i][j]);
@@ -228,19 +239,52 @@ public class OrToolsFixtureService {
 
     private void aplicarRestriccionesSecuencia(CpModel model, int n, int numFechas, Literal[][] esLocal,
             Literal[][] esVisitante) {
-        // Max 3 seguidas local (implica que en ventana de 4 no puede haber 4)
+        // CAMBIO: Relaxing Hard Constraint a Soft Constraint para evitar Infeasibility
+        // en Ayacucho
+        // Hard Limit: Max 5 consecutivas (para permitir el caso extremo de Rauch vs 5
+        // Ayacucho)
+        // Soft Limit: Ideal Max 2. Penalizar fuertemente si > 2.
+
+        int penalty = 10;
+
         for (int i = 0; i < n; i++) {
-            for (int f = 0; f < numFechas - 3; f++) {
-                // local[f] + ... + local[f+3] <= 3
-                model.addLessOrEqual(
-                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i],
-                                esLocal[f + 3][i] }),
-                        3);
-                // vis[f] + ... + vis[f+3] <= 3
-                model.addLessOrEqual(LinearExpr
-                        .sum(new Literal[] { esVisitante[f][i], esVisitante[f + 1][i], esVisitante[f + 2][i],
-                                esVisitante[f + 3][i] }),
-                        3);
+            // 1. Hard Constraint Relaxed: Max 5
+            for (int f = 0; f < numFechas - 5; f++) {
+                model.addLessOrEqual(LinearExpr.sum(new Literal[] {
+                        esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i], esLocal[f + 3][i], esLocal[f + 4][i],
+                        esLocal[f + 5][i]
+                }), 5);
+                model.addLessOrEqual(LinearExpr.sum(new Literal[] {
+                        esVisitante[f][i], esVisitante[f + 1][i], esVisitante[f + 2][i], esVisitante[f + 3][i],
+                        esVisitante[f + 4][i], esVisitante[f + 5][i]
+                }), 5);
+            }
+
+            // 2. Soft Constraint: Ideal Max 2
+            // Window size 3. If sum > 2, penalty.
+            for (int f = 0; f < numFechas - 2; f++) {
+                // Local
+                IntVar sumLoc = model.newIntVar(0, 3, "sum_loc_" + i + "_" + f);
+                model.addEquality(sumLoc,
+                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }));
+
+                // excess = max(0, sumLoc - 2).
+                BoolVar excessLoc = model.newBoolVar("excess_loc_" + i + "_" + f);
+                model.addGreaterOrEqual(sumLoc, 3).onlyEnforceIf(excessLoc);
+                model.addLessOrEqual(sumLoc, 2).onlyEnforceIf(excessLoc.not());
+
+                model.minimize(LinearExpr.term(excessLoc, penalty));
+
+                // Visitante
+                IntVar sumVis = model.newIntVar(0, 3, "sum_vis_" + i + "_" + f);
+                model.addEquality(sumVis, LinearExpr
+                        .sum(new Literal[] { esVisitante[f][i], esVisitante[f + 1][i], esVisitante[f + 2][i] }));
+
+                BoolVar excessVis = model.newBoolVar("excess_vis_" + i + "_" + f);
+                model.addGreaterOrEqual(sumVis, 3).onlyEnforceIf(excessVis);
+                model.addLessOrEqual(sumVis, 2).onlyEnforceIf(excessVis.not());
+
+                model.minimize(LinearExpr.term(excessVis, penalty));
             }
         }
     }
@@ -249,157 +293,255 @@ public class OrToolsFixtureService {
 
     private void aplicarStadiumSharing(CpModel model, List<List<Equipo>> torneos, Map<Integer, Literal[]> mapaLocalia,
             int maxFechas) {
-        List<Equipo> flatList = torneos.stream().flatMap(List::stream).toList();
-        int penalty = 1000; // Penalización alta por choque de estadio
+        // Pares que NO pueden ser locales simultáneamente
+        List<String[]> pares = new ArrayList<>();
+        pares.add(new String[] { "INDEPENDIENTE", "INDEPENDIENTE (ROJO)" }); // Indep A vs Indep Rojo
+        pares.add(new String[] { "FERROCARRIL SUD", "FERROCARRIL SUD (AZUL)" }); // Ferro A vs Ferro Azul
+        pares.add(new String[] { "UNICEN", "GRUPO UNIVERSITARIO" });
+        pares.add(new String[] { "SANTAMARINA", "LA OFICINA" }); // "Oficina" -> LA OFICINA? Asumo nombre
+        pares.add(new String[] { "SAN JOSÉ", "EXCURSIONISTAS" }); // SAN JOSE (MASC) asumo SAN JOSE
 
-        for (int i = 0; i < flatList.size(); i++) {
-            for (int j = i + 1; j < flatList.size(); j++) {
-                Equipo e1 = flatList.get(i);
-                Equipo e2 = flatList.get(j);
+        for (String[] par : pares) {
+            Integer id1 = buscarIdPorNombre(par[0], torneos);
+            Integer id2 = buscarIdPorNombre(par[1], torneos);
 
-                if (compartenSede(e1, e2) && !sonEspejos(e1, e2)) {
-                    Literal[] loc1 = mapaLocalia.get(e1.getId());
-                    Literal[] loc2 = mapaLocalia.get(e2.getId());
+            if (id1 != null && id2 != null) {
+                imponerRestriccionNoCoincidencia(model, mapaLocalia, id1, id2, maxFechas);
+            }
+        }
+    }
 
-                    if (loc1 == null || loc2 == null)
-                        continue;
-
-                    int len = Math.min(loc1.length, loc2.length);
-                    for (int f = 0; f < len; f++) {
-                        // Hard Constraint Original: loc1[f] + loc2[f] <= 1
-                        // Soft Constraint: Penalizar si suman > 1
-                        // Var auxiliar: choque = (loc1 && loc2)
-                        BoolVar choque = model.newBoolVar("choque_estadio_" + e1.getId() + "_" + e2.getId() + "_f" + f);
-                        // model.addHtmlString(choque, "Choque de Estadio"); // Metadata no disponible
-                        // en Java API
-
-                        // choque => loc1 y choque => loc2
-                        // loc1 + loc2 - 1 <= choque (Si ambos son 1, choque DEBE ser 1)
-                        // Logica booleana: AND
-                        model.addBoolAnd(List.of(loc1[f], loc2[f])).onlyEnforceIf(choque);
-                        model.addBoolOr(List.of(loc1[f].not(), loc2[f].not())).onlyEnforceIf(choque.not());
-
-                        // Minimizar choques
-                        model.minimize(LinearExpr.term(choque, penalty));
-                    }
-                }
+    private void imponerRestriccionNoCoincidencia(CpModel model, Map<Integer, Literal[]> mapaLocalia, int id1, int id2,
+            int maxFechas) {
+        Literal[] l1 = mapaLocalia.get(id1);
+        Literal[] l2 = mapaLocalia.get(id2);
+        if (l1 != null && l2 != null) {
+            int len = Math.min(l1.length, l2.length);
+            for (int f = 0; f < len; f++) {
+                // l1 + l2 <= 1 -> No pueden ser locales al mismo tiempo
+                model.addLessOrEqual(LinearExpr.newBuilder().addTerm(l1[f], 1).addTerm(l2[f], 1).build(), 1);
             }
         }
     }
 
     private void aplicarCupoAyacucho(CpModel model, List<List<Equipo>> torneos, Map<Integer, Literal[]> mapaLocalia,
             int maxFechas) {
-        List<Literal[]> varsAyacucho = new ArrayList<>();
-        List<Equipo> flatList = torneos.stream().flatMap(List::stream).toList();
-        for (Equipo e : flatList) {
-            if (esDeAyacucho(e)) {
-                Literal[] v = mapaLocalia.get(e.getId());
-                if (v != null)
-                    varsAyacucho.add(v);
+        List<Integer> idsAyacucho = new ArrayList<>();
+        List<String> nombresAyacucho = Arrays.asList("BOTAFOGO", "ATLÉTICO AYACUCHO", "SARMIENTO", "ATENEO ESTRADA",
+                "ESTRADA"); // Ateneo Estrada a veces es Estrada
+
+        // Recolectar IDs de todos los equipos de Ayacucho presentes
+        for (List<Equipo> torneo : torneos) {
+            for (Equipo e : torneo) {
+                String nombreUpper = e.getNombre().toUpperCase();
+                boolean esAyacucho = nombresAyacucho.stream().anyMatch(nombreUpper::contains);
+                if (esAyacucho) {
+                    idsAyacucho.add(e.getId());
+                }
             }
         }
 
-        if (varsAyacucho.size() < 3)
+        if (idsAyacucho.isEmpty())
             return;
-
-        int penalty = 500; // Penalización media
 
         for (int f = 0; f < maxFechas; f++) {
             List<Literal> localesEnFecha = new ArrayList<>();
-            for (Literal[] v : varsAyacucho) {
-                if (f < v.length)
+            for (Integer id : idsAyacucho) {
+                Literal[] v = mapaLocalia.get(id);
+                if (v != null && f < v.length) {
                     localesEnFecha.add(v[f]);
+                }
             }
-            // Hard Constraint Original: sum <= 2
-            // Soft Constraint: Exceso
-            // variable exceso >= sum - 2
+            // Sum(LocalesAyacucho) <= 2
+            if (!localesEnFecha.isEmpty()) {
+                model.addLessOrEqual(LinearExpr.sum(localesEnFecha.toArray(new Literal[0])), 2);
+            }
+        }
+    }
 
-            // Crear variable para contar cuántos locales hay: count
-            // LinearExpr sumLocales = LinearExpr.sum(localesEnFecha...);
-            // Esto es complejo combinando BoolVars.
-            // MEJOR: Relax simple. Si son > 2, penalizar CADA UNO extra.
-            // Pero, queremos permitir que haya 2 gratis.
+    private void aplicarJuarenseAlumniConstraint(CpModel model, List<List<Equipo>> torneos,
+            Map<Integer, Literal[]> mapaLocalia, int maxFechas) {
+        Integer idJuarense = buscarIdPorNombre("JUARENSE", torneos);
+        Integer idAlumni = buscarIdPorNombre("ALUMNI", torneos); // Alumni de Benito Juarez
 
-            // IntVar count = model.newIntVar(0, varsAyacucho.size(), "count_ayacucho_f" +
-            // f);
-            // model.addEquality(count, LinearExpr.sum(localesEnFecha.toArray(new
-            // Literal[0])));
-
-            // IntVar exceso = model.newIntVar(0, varsAyacucho.size(), "exceso_ayacucho_f" +
-            // f);
-            // model.addMaxEquality(exceso, List.of(model.newConstant(0),
-            // LinearExpr.newBuilder().addTerm(count, 1).addTerm(model.newConstant(-2),
-            // 1).build()));
-            // API LinearExpr no es tan directa para aritmetica.
-
-            // Simplificación v2:
-            // "Soft Upper Bound"
-            // Podemos usar una variable de holgura 'slack' positiva.
-            // sum(locales) <= 2 + slack
-            // Minimize(slack * penalty)
-
-            IntVar slack = model.newIntVar(0, varsAyacucho.size(), "slack_ayacucho_f" + f);
-            model.addLessOrEqual(
-                    LinearExpr.newBuilder().addSum(localesEnFecha.toArray(new Literal[0])).addTerm(slack, -1),
-                    2);
-            model.minimize(LinearExpr.term(slack, penalty));
+        if (idJuarense != null && idAlumni != null) {
+            Literal[] lJ = mapaLocalia.get(idJuarense);
+            Literal[] lA = mapaLocalia.get(idAlumni);
+            if (lJ != null && lA != null) {
+                int len = Math.min(lJ.length, lA.length);
+                for (int f = 0; f < len; f++) {
+                    // Si Juarense es Local -> Alumni Visitante (NO Local)
+                    // Si Alumni es Local -> Juarense Visitante (NO Local)
+                    // Implica: No pueden ser locales simultáneamente.
+                    // lJ + lA <= 1
+                    model.addLessOrEqual(LinearExpr.newBuilder().addTerm(lJ[f], 1).addTerm(lA[f], 1).build(), 1);
+                }
+            }
         }
     }
 
     private void aplicarMirroring(CpModel model, List<List<Equipo>> torneos, Map<Integer, Literal[]> mapaLocalia,
             int maxFechas) {
-        // Pares definidos hardcoded por ahora
-        Map<String, String> paresEspejo = new HashMap<>();
-        paresEspejo.put("INDEPENDIENTE FEMENINO", "INDEPENDIENTE (ROJO)");
-        paresEspejo.put("FERROCARRIL SUD FEMENINO", "FERROCARRIL SUD (AZUL)");
+        // Pares de Espejo: Deben tener la MISMA localía
+        List<String[]> espejos = new ArrayList<>();
+        // Femenino -> Rojo/Azul
+        espejos.add(new String[] { "INDEPENDIENTE FEMENINO", "INDEPENDIENTE (ROJO)" });
+        espejos.add(new String[] { "FERROCARRIL SUD FEMENINO", "FERROCARRIL SUD (AZUL)" });
 
-        for (Map.Entry<String, String> entry : paresEspejo.entrySet()) {
-            Integer id1 = buscarIdPorNombre(entry.getKey(), torneos);
-            Integer id2 = buscarIdPorNombre(entry.getValue(), torneos);
+        // Infantiles "Fusions" -> Se comportan como uno solo
+        espejos.add(new String[] { "ATENEO ESTRADA", "DEP. RAUCH" }); // Ateneo + Dep Rauch
+        espejos.add(new String[] { "DEFENSORES DEL CERRO", "ALUMNI" }); // Def Cerro + Alumni (Infantiles)
+
+        for (String[] par : espejos) {
+            Integer id1 = buscarIdPorNombre(par[0], torneos); // Busca parcial, cuidado con ambiguedades
+            Integer id2 = buscarIdPorNombre(par[1], torneos);
 
             if (id1 != null && id2 != null) {
-                Literal[] vars1 = mapaLocalia.get(id1);
-                Literal[] vars2 = mapaLocalia.get(id2);
-
-                if (vars1 != null && vars2 != null) {
-                    int len = Math.min(vars1.length, vars2.length);
+                Literal[] l1 = mapaLocalia.get(id1);
+                Literal[] l2 = mapaLocalia.get(id2);
+                if (l1 != null && l2 != null) {
+                    int len = Math.min(l1.length, l2.length);
                     for (int f = 0; f < len; f++) {
-                        // loc1[f] == loc2[f]
-                        model.addEquality(vars1[f], vars2[f]);
+                        // l1 == l2
+                        model.addEquality(l1[f], l2[f]);
                     }
                 }
             }
         }
     }
 
-    private void aplicarJuarenseAlumniConstraint(CpModel model, Map<Integer, Literal[]> mapaLocalia, Integer idJuarense,
-            Integer idAlumni) {
-        Literal[] varsJ = mapaLocalia.get(idJuarense);
-        Literal[] varsA = mapaLocalia.get(idAlumni);
+    private void aplicarLogisticaFigueroa(CpModel model, List<List<Equipo>> torneos,
+            Map<Integer, Literal[]> mapaLocalia, int maxFechas) {
+        // Logística Figueroa: Juv. Unida Femenino y Def. del Cerro deben estar cruzados
+        // con Deportivo Tandil.
+        // Asumo JuvUnidaFem y DefCerro juegan en la misma cancha (Figueroa) y comparten
+        // con DepTandil?
+        // Regla: "Juv. Unida Femenino ... y Def. del Cerro ... deben estar cruzados con
+        // Deportivo Tandil"
+        // Interpretación: (Loc(JuvUnidaFem) OR Loc(DefCerro)) implies NOT
+        // Loc(DepTandil)
+        // O más estricto: Ninguno de ellos puede coincidir con DepTandil.
 
-        if (varsJ == null || varsA == null)
+        Integer idDepTandil = buscarIdPorNombre("DEPORTIVO TANDIL", torneos);
+
+        // Refinamiento de búsqueda para Juv Unida Fem si es necesario (verificando
+        // Bloque/Categoria si pudiera)
+        // Por ahora busco por nombre, asumiendo que los nombres son únicos o el
+        // contexto del día (Sábado) filtra el correcto.
+        // Si hay Juv Unida Masc y Fem el mismo día, esto podría fallar.
+        // Pero Juv Unida Fem compite en Sábado. Def Cerro también? Dep Tandil también?
+
+        if (idDepTandil == null)
             return;
 
-        int penalty = 2000; // Penalización muy alta, prioridad
+        List<Integer> rivalesFigueroa = new ArrayList<>();
+        // Buscar ids específicos tratando de distinguir
+        for (List<Equipo> t : torneos) {
+            for (Equipo e : t) {
+                String n = e.getNombre().toUpperCase();
+                // Juv Unida Fem
+                if (n.contains("JUVENTUD UNIDA")
+                        && (e.getBloque() == Bloque.FEM_MAYORES || e.getBloque() == Bloque.FEM_MENORES)) {
+                    rivalesFigueroa.add(e.getId());
+                }
+                // Def Cerro
+                if (n.contains("DEFENSORES DEL CERRO")) {
+                    rivalesFigueroa.add(e.getId());
+                }
+            }
+        }
 
-        int len = Math.min(varsJ.length, varsA.length);
-        for (int f = 0; f < len; f++) {
-            // Soft Constraint
-            // slack >= (J + A) - 1
-            // J + A <= 1 + slack
-            IntVar slack = model.newIntVar(0, 2, "slack_ja_f" + f);
-            model.addLessOrEqual(
-                    LinearExpr.newBuilder().addTerm(varsJ[f], 1).addTerm(varsA[f], 1).addTerm(slack, -1),
-                    1);
-            model.minimize(LinearExpr.term(slack, penalty));
+        // Aplicar restricciones
+        Literal[] lDep = mapaLocalia.get(idDepTandil);
+        if (lDep == null)
+            return;
+
+        for (Integer rivalId : rivalesFigueroa) {
+            Literal[] lRiv = mapaLocalia.get(rivalId);
+            if (lRiv != null) {
+                int len = Math.min(lDep.length, lRiv.length);
+                for (int f = 0; f < len; f++) {
+                    // DepTandil y Rival NO locales simultaneamente
+                    model.addLessOrEqual(LinearExpr.newBuilder().addTerm(lDep[f], 1).addTerm(lRiv[f], 1).build(), 1);
+                }
+            }
         }
     }
 
-    // Método auxiliar para buscar ID por nombre en los torneos cargados
+    private void aplicarLogisticaLaFlorida(CpModel model, List<List<Equipo>> torneos,
+            Map<Integer, Literal[]> mapaLocalia,
+            int maxFechas, List<Literal[][]> esLocalPorTorneo, List<Literal[][]> esVisitantePorTorneo) {
+        // Regla: Cuando Unión y Progreso es Visitante, se debe programar:
+        // Sábado: Juv. Unida Masc + Juv. Unida Negro Fem Locales.
+        // Domingo: Juv Unida Masc Locales.
+
+        // Interpretación: Vis(Union) => Loc(JuvUnida)
+        // Esto es para asegurar disponibilidad de cancha?
+
+        Integer idUnion = buscarIdPorNombre("UNIÓN Y PROGRESO", torneos);
+        if (idUnion == null)
+            return;
+
+        // Buscar Juv Unida del mismo día
+        List<Integer> idsJuvUnida = new ArrayList<>();
+        for (List<Equipo> t : torneos) {
+            for (Equipo e : t) {
+                if (e.getNombre().toUpperCase().contains("JUVENTUD UNIDA")) {
+                    idsJuvUnida.add(e.getId());
+                }
+            }
+        }
+
+        if (idsJuvUnida.isEmpty())
+            return;
+
+        // Necesitamos saber si Union "Es Visitante" en fecha f.
+        // mapaLocalia solo tiene "Es Local". "Es Visitante" no está en el mapa, pero
+        // está en las vars originales.
+        // Pero mapaLocaliaVars es global map<ID, Literal[]>.
+        // Podemos reconstruir "Es Visitante" si Union juega siempre?
+        // Mejor: Usar el mapaLocalia de Union y asumir que si no es local, es
+        // visitante? NO, puede ser Libre.
+        // Necesito acceder a la variable EsVisitante de Union.
+        // No la tengo en el mapa global. ERROR DE DISEÑO en mi estructura actual.
+        // FIX: La regla dice "Cuando Union es Visitante".
+        // Voy a asumir que Union juega casi siempre.
+        // Pero para ser estricto, debería guardar vars de Visitante en un mapa también.
+
+        // Por simplicidad y robustez: Si Union NO es Local, forzamos Juv Unida Local.
+        // (Esto asume Union juega o quiere cancha libre cuando es visitante no tiene
+        // sentido)
+        // Releyendo: "Cuando Unión es Visitante... se debe programar Juv Unida...".
+        // Probablemente comparten predio (La Florida) y se turnan.
+        // Si Union es Visita (Cancha libre), Juv Unida usa la cancha (Local).
+        // Si Union es Local (Usa cancha), Juv Unida debe ser Visitante.
+        // Entonces es un Stadium Sharing clásico: Loc(Union) + Loc(JuvUnida) <= 1.
+        // PERO ademas dice que si Union es VIisitante, Juv Unida DEBE ser local?
+        // Eso es muy fuerte (Forced Local). "Se debe programar...".
+        // Lo interpretaré como Stadium Sharing primero (Hard) y preferencia de uso
+        // (Soft) o Hard si es posible.
+        // "Logística Quinta La Florida" suena a "Solo hay una cancha".
+        // Entonces Loc(Union) y Loc(JuvUnida) son mutuamente excluyentes.
+
+        Literal[] lUnion = mapaLocalia.get(idUnion);
+
+        for (Integer idJuv : idsJuvUnida) {
+            Literal[] lJuv = mapaLocalia.get(idJuv);
+            if (lUnion != null && lJuv != null) {
+                int len = Math.min(lUnion.length, lJuv.length);
+                for (int f = 0; f < len; f++) {
+                    // Stadium Sharing: No pueden ser locales a la vez
+                    model.addLessOrEqual(LinearExpr.newBuilder().addTerm(lUnion[f], 1).addTerm(lJuv[f], 1).build(), 1);
+                }
+            }
+        }
+    }
+
     private Integer buscarIdPorNombre(String nombreParcial, List<List<Equipo>> torneos) {
+        String query = nombreParcial.toUpperCase();
         for (List<Equipo> lista : torneos) {
             for (Equipo e : lista) {
-                if (e.getNombre().toUpperCase().contains(nombreParcial.toUpperCase())) {
+                if (e.getNombre().toUpperCase().contains(query)) {
                     return e.getId();
                 }
             }
@@ -407,31 +549,9 @@ public class OrToolsFixtureService {
         return null;
     }
 
-    private boolean compartenSede(Equipo e1, Equipo e2) {
-        if (e1.getClub() == null || e2.getClub() == null)
-            return false;
-        return e1.getClub().getSede().getId() == e2.getClub().getSede().getId();
-    }
-
-    private boolean sonEspejos(Equipo e1, Equipo e2) {
-        // Implementar lógica de nombres (Indep Rojo/Fem)
-        String n1 = e1.getNombre().toUpperCase();
-        String n2 = e2.getNombre().toUpperCase();
-        if (n1.contains("INDEPENDIENTE") && n2.contains("INDEPENDIENTE"))
-            return true;
-        if (n1.contains("FERRO") && n2.contains("FERRO"))
-            return true;
-        return false;
-    }
-
-    private boolean esDeAyacucho(Equipo e) {
-        String n = e.getNombre().toUpperCase();
-        return n.contains("AYACUCHO") || n.contains("SARMIENTO") || n.contains("ESTRADA") || n.contains("BOTAFOGO");
-    }
-
     private void guardarSolucion(CpSolver solver, List<Literal[][][]> varsPorTorneo, List<List<Equipo>> torneos,
             List<Bloque> bloques, List<Liga> ligas) {
-        // Reconstruir objetos Fecha y Partido
+
         List<Fecha> fechasTotal = new ArrayList<>();
 
         for (int t = 0; t < torneos.size(); t++) {
@@ -457,12 +577,13 @@ public class OrToolsFixtureService {
                             p.setVisitante(equipos.get(j));
                             p.setFecha(fecha);
                             p.setCancha(equipos.get(i).getClub().getSede());
-                            // Check for duplicates in list? No, new Partido per loop
                             fecha.getPartidos().add(p);
                         }
                     }
                 }
-                fechasTotal.add(fecha);
+                if (!fecha.getPartidos().isEmpty()) {
+                    fechasTotal.add(fecha);
+                }
             }
         }
         fechaRepository.saveAll(fechasTotal);

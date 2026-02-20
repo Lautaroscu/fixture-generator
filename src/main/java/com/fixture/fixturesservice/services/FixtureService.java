@@ -780,6 +780,7 @@ public class FixtureService {
         }
     }
 
+    // Mover equipos() aquí para evitar problemas de parsing al final del archivo
     public List<EquipoDTO> equipos() {
         return equipoRepository.findAll().stream().map(EquipoDTO::toDTO).toList();
     }
