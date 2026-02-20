@@ -263,28 +263,38 @@ public class FixtureService {
     }
 
     public boolean esValido(Equipo loc, Equipo vis, EstadoFecha estadoFecha, GeneracionContexto ctx) {
-        int sedeId = ((Number) loc.getClub().getSede().getId()).intValue();
-        int clubLocalId = ((Number) loc.getClub().getId()).intValue();
-        if (estadoFecha.getClubesLocales().contains(clubLocalId)) {
-            return true;
-        }
-        if (estadoFecha.getSedesUsadas().containsKey(sedeId)) {
-            // EXCEPCIÓN DE ESPEJOS (Double Header permitido)
-            // Si la sede está ocupada por mi "Espejo", entonces SÍ puedo jugar (compartimos
-            // localía)
-            Integer ocupanteId = estadoFecha.getOcupanteSede(sedeId);
-            if (ocupanteId != null && esEspejo(loc, ocupanteId, ctx)) {
-                return true; // Permitido compartir
-            }
-            return false;
-        }
-
-        // CHEQUEO DE RACHAS
+        // 1. CHEQUEO DE RACHAS (Prioridad Absoluta: < 2 y > -2)
         EstadoEquipo el = estadoFecha.getEstado(loc.getId());
         EstadoEquipo ev = estadoFecha.getEstado(vis.getId());
 
-        return el.getUltimasConsecutivas() < 3 && ev.getUltimasConsecutivas() > -3
-                && validarRestriccionesEspecíficas(loc, vis, estadoFecha, ctx);
+        if (el.getUltimasConsecutivas() >= 2 || ev.getUltimasConsecutivas() <= -2) {
+            return false;
+        }
+
+        // 2. DISPONIBILIDAD DE SEDE / INTELIGENCIA DE TIRA / ESPEJOS
+        boolean sedeDisponible = false;
+        int clubLocalId = ((Number) loc.getClub().getId()).intValue();
+        int sedeId = ((Number) loc.getClub().getSede().getId()).intValue();
+
+        if (estadoFecha.getClubesLocales().contains(clubLocalId)) {
+            sedeDisponible = true; // El club ya está jugando de local en esta sede
+        } else if (!estadoFecha.getSedesUsadas().containsKey(sedeId)) {
+            sedeDisponible = true; // Sede totalmente libre
+        } else {
+            // Sede ocupada: Verificar si la ocupa un equipo "Espejo" (Indep Fem / Rojo,
+            // etc.)
+            Integer ocupanteId = estadoFecha.getOcupanteSede(sedeId);
+            if (ocupanteId != null && esEspejo(loc, ocupanteId, ctx)) {
+                sedeDisponible = true;
+            }
+        }
+
+        if (!sedeDisponible)
+            return false;
+
+        // 3. VALIDACIÓN DE OTRAS RESTRICCIONES (Ayacucho, Seguridad Juarense/Alumni,
+        // Mirroring Fem)
+        return validarRestriccionesEspecíficas(loc, vis, estadoFecha, ctx);
     }
 
     private boolean validarRestriccionesEspecíficas(Equipo loc, Equipo vis, EstadoFecha estado,
