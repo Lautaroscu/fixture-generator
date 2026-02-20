@@ -171,25 +171,15 @@ public class OrToolsFixtureService {
     }
 
     private void aplicarRestriccionesSecuencia(CpModel model, int n, int numFechas, Literal[][] esLocal) {
-        int penaltyAlternancia = 100;
         for (int i = 0; i < n; i++) {
             for (int f = 0; f <= numFechas - 3; f++) {
-                BoolVar tresLocales = model.newBoolVar("3L_" + i + "_" + f);
-                model.addGreaterOrEqual(
-                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }), 3)
-                        .onlyEnforceIf(tresLocales);
+                // Hard constraint: Máximo 2 locales consecutivos (No 3 locales)
                 model.addLessOrEqual(
-                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }), 2)
-                        .onlyEnforceIf(tresLocales.not());
-                model.minimize(LinearExpr.term(tresLocales, penaltyAlternancia));
+                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }), 2);
 
-                BoolVar tresVisitas = model.newBoolVar("3V_" + i + "_" + f);
-                model.addEquality(LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }),
-                        0).onlyEnforceIf(tresVisitas);
+                // Hard constraint: Máximo 2 visitantes consecutivos (No 3 visitantes)
                 model.addGreaterOrEqual(
-                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }), 1)
-                        .onlyEnforceIf(tresVisitas.not());
-                model.minimize(LinearExpr.term(tresVisitas, penaltyAlternancia));
+                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }), 1);
             }
         }
     }
@@ -242,6 +232,7 @@ public class OrToolsFixtureService {
     }
 
     private void aplicarStadiumSharing(CpModel model, List<List<Equipo>> torneos, Map<Integer, Literal[]> mapaLocalia) {
+        int penaltySharing = 1000;
         List<String[]> pares = Arrays.asList(
                 new String[] { "Independiente", "Independiente (rojo)" },
                 new String[] { "Ferrocarril Sud", "Ferro Azul" },
@@ -258,9 +249,11 @@ public class OrToolsFixtureService {
                 Literal[] l2 = mapaLocalia.get(id2);
                 int len = Math.min(l1.length, l2.length);
                 for (int f = 0; f < len; f++) {
-                    // <= 1 significa: O juega uno, o juega el otro, o ninguno. Nunca los dos
-                    // juntos.
-                    model.addLessOrEqual(LinearExpr.sum(new Literal[] { l1[f], l2[f] }), 1);
+                    // Soft constraint: Preferiblemente no juegan los dos de local
+                    BoolVar choqueSede = model.newBoolVar("choque_sede_" + id1 + "_" + id2 + "_f" + f);
+                    model.addLessOrEqual(LinearExpr.sum(new Literal[] { l1[f], l2[f] }), 1)
+                            .onlyEnforceIf(choqueSede.not());
+                    model.minimize(LinearExpr.term(choqueSede, penaltySharing));
                 }
             }
         }
@@ -281,8 +274,21 @@ public class OrToolsFixtureService {
             Literal[] l1 = mapaLocalia.get(id1);
             Literal[] l2 = mapaLocalia.get(id2);
             int len = Math.min(l1.length, l2.length);
-            for (int f = 0; f < len; f++)
-                model.addEquality(l1[f], l2[f]);
+
+            for (int f = 0; f < len; f++) {
+                // 1. Creamos una variable booleana auxiliar
+                BoolVar espejoRoto = model.newBoolVar("espejo_roto_" + id1 + "_" + id2 + "_f" + f);
+
+                // 2. Condición: Si espejoRoto es FALSE, entonces l1 TIENE que ser igual a l2
+                model.addEquality(l1[f], l2[f]).onlyEnforceIf(espejoRoto.not());
+
+                // 3. Le decimos al solver que su objetivo en la vida es minimizar esta variable
+                // Al ponerle un peso enorme (500), el solver va a intentar por todos los
+                // medios mantener espejoRoto en FALSE. Solo la pasará a TRUE si una regla
+                // física (como un choque de estadios) lo obliga a hacerlo para no dar
+                // INFEASIBLE.
+                model.minimize(LinearExpr.term(espejoRoto, 500));
+            }
         }
     }
 
@@ -296,8 +302,11 @@ public class OrToolsFixtureService {
             Literal[] lJuve = mapaLocalia.get(idJuve);
             int len = Math.min(lUnion.length, lJuve.length);
             for (int f = 0; f < len; f++) {
-                // Exclusión mutua (Evita Pigeonhole bug)
-                model.addLessOrEqual(LinearExpr.sum(new Literal[] { lUnion[f], lJuve[f] }), 1);
+                // Soft constraint
+                BoolVar choqueFlorida = model.newBoolVar("choque_florida_f" + f);
+                model.addLessOrEqual(LinearExpr.sum(new Literal[] { lUnion[f], lJuve[f] }), 1)
+                        .onlyEnforceIf(choqueFlorida.not());
+                model.minimize(LinearExpr.term(choqueFlorida, 800));
             }
         }
     }
@@ -320,7 +329,14 @@ public class OrToolsFixtureService {
                     locales.add(v[f]);
             }
             if (!locales.isEmpty()) {
-                model.addLessOrEqual(LinearExpr.sum(locales.toArray(new Literal[0])), 2);
+                // Soft constraint: Intentar no pasar de 2, pero permitir hasta 3 con penalidad
+                IntVar nLocalesAyacucho = model.newIntVar(0, locales.size(), "ayac_locales_f" + f);
+                model.addEquality(nLocalesAyacucho, LinearExpr.sum(locales.toArray(new Literal[0])));
+
+                BoolVar cupoExcedido = model.newBoolVar("ayac_exceso_f" + f);
+                model.addGreaterOrEqual(nLocalesAyacucho, 3).onlyEnforceIf(cupoExcedido);
+                model.addLessOrEqual(nLocalesAyacucho, 2).onlyEnforceIf(cupoExcedido.not());
+                model.minimize(LinearExpr.term(cupoExcedido, 300));
             }
         }
     }
@@ -334,8 +350,11 @@ public class OrToolsFixtureService {
             Literal[] lA = mapaLocalia.get(idA);
             int len = Math.min(lJ.length, lA.length);
             for (int f = 0; f < len; f++) {
-                // Exclusión mutua segura
-                model.addLessOrEqual(LinearExpr.sum(new Literal[] { lJ[f], lA[f] }), 1);
+                // Soft constraint
+                BoolVar choqueSeguridad = model.newBoolVar("choque_seguridad_f" + f);
+                model.addLessOrEqual(LinearExpr.sum(new Literal[] { lJ[f], lA[f] }), 1)
+                        .onlyEnforceIf(choqueSeguridad.not());
+                model.minimize(LinearExpr.term(choqueSeguridad, 1500));
             }
         }
     }
