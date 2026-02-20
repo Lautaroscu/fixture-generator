@@ -40,8 +40,24 @@ public class FixtureController {
     }
 
     @GetMapping("/generar-ortools")
-    public ResponseEntity<ResponseDTO> generarFixtureOrTools() {
-        return ResponseEntity.ok(orToolsFixtureService.generarConOrTools());
+    public ResponseEntity<?> generarFixtureOrTools() {
+// 1. Generamos un ID único para este trabajo
+        String jobId = UUID.randomUUID().toString();
+        
+        // 2. Disparamos el hilo en segundo plano
+        orToolsService.generarFixtureAsync(jobId);
+        
+        // 3. Devolvemos el jobId inmediatamente (HTTP 202 Accepted)
+        return ResponseEntity.accepted().body(Map.of(
+            "jobId", jobId,
+            "status", "PROCESSING",
+            "message", "Generación iniciada en segundo plano."
+        ));   
+    }
+    @GetMapping("/status/{jobId}")
+    public ResponseEntity<JobStatusDTO> consultarEstado(@PathVariable String jobId) {
+        JobStatusDTO status = orToolsService.obtenerEstadoTrabajo(jobId);
+        return ResponseEntity.ok(status);
     }
 
     @GetMapping
