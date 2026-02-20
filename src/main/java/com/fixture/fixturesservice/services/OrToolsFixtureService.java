@@ -35,22 +35,24 @@ public class OrToolsFixtureService {
     public void init() {
         Loader.loadNativeLibraries();
     }
-// Mapa en memoria para rastrear el estado de los procesos
+
+    // Mapa en memoria para rastrear el estado de los procesos
     private final Map<String, JobStatusDTO> jobTracker = new ConcurrentHashMap<>();
 
     // Método para consultar el estado desde el Controller
     public JobStatusDTO obtenerEstadoTrabajo(String jobId) {
         return jobTracker.getOrDefault(jobId, new JobStatusDTO("NOT_FOUND", "El trabajo no existe."));
     }
+
     // El nuevo punto de entrada asíncrono
     @Async
     public void generarFixtureAsync(String jobId) {
         try {
             jobTracker.put(jobId, new JobStatusDTO("PROCESSING", "El motor OR-Tools está calculando el fixture..."));
-            
+
             // Llamamos a tu método pesado original
-            ResponseDTO resultado = generarConOrTools(); 
-            
+            ResponseDTO resultado = generarConOrTools();
+
             if (resultado.isSuccess()) {
                 jobTracker.put(jobId, new JobStatusDTO("COMPLETED", resultado.getMessage()));
             } else {
@@ -60,9 +62,10 @@ public class OrToolsFixtureService {
             jobTracker.put(jobId, new JobStatusDTO("ERROR", "Fallo crítico en el hilo secundario: " + e.getMessage()));
         }
     }
+
     @Transactional
     public ResponseDTO generarConOrTools() {
-        List<Equipo> todos = equipoRepository.findAll();
+        List<Equipo> todos = equipoRepository.findAllConRelaciones();
         if (todos.isEmpty()) {
             return new ResponseDTO("No hay equipos cargados.", false);
         }
