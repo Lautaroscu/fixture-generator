@@ -1,3 +1,4 @@
+# ETAPA 1: Construcción
 FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /app
 
@@ -9,11 +10,12 @@ RUN ./mvnw dependency:go-offline
 COPY src ./src
 RUN ./mvnw clean package -DskipTests
 
-FROM eclipse-temurin:21-jre-alpine
+# ETAPA 2: Ejecución (Acá estaba el error, ahora es jammy)
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-# 1. Crear el usuario y el grupo
-RUN addgroup -S spring && adduser -S spring -G spring
+# 1. Crear el usuario y el grupo (Sintaxis de Debian/Ubuntu)
+RUN groupadd -r spring && useradd -r -g spring spring
 
 # 2. Crear la carpeta de datos y darle permisos al usuario spring
 RUN mkdir -p /app/data && chown -R spring:spring /app/data
