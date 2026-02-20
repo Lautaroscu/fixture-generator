@@ -1,0 +1,14 @@
+package com.fixture.fixturesservice.DTOS;
+
+public class JobStatusDTO {
+    private String estado; // "PROCESSING", "COMPLETED", "ERROR"
+    private String mensaje;
+
+    public JobStatusDTO(String estado, String mensaje) {
+        this.estado = estado;
+        this.mensaje = mensaje;
+    }
+
+    public String getEstado() { return estado; }
+    public String getMensaje() { return mensaje; }
+}
