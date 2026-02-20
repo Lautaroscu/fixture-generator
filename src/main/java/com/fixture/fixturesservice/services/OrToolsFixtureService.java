@@ -102,7 +102,7 @@ public class OrToolsFixtureService {
             aplicarRestriccionesSecuencia(model, n, numFechas, esLocal);
         }
 
-        // 2. Aplicar Restricciones de Negocio Globales
+        // 2. Aplicar Restricciones de Negocio Globales (Comentadas por pedido)
         aplicarCapacidadEstadios(model, torneos, varsPorTorneo);
         aplicarStadiumSharing(model, torneos, mapaLocaliaVars);
         aplicarCupoAyacucho(model, torneos, mapaLocaliaVars, maxFechasGlobal);
@@ -172,14 +172,18 @@ public class OrToolsFixtureService {
 
     private void aplicarRestriccionesSecuencia(CpModel model, int n, int numFechas, Literal[][] esLocal) {
         for (int i = 0; i < n; i++) {
-            for (int f = 0; f <= numFechas - 3; f++) {
-                // Hard constraint: Máximo 2 locales consecutivos (No 3 locales)
+            for (int f = 0; f <= numFechas - 4; f++) {
+                // Hard constraint: Máximo 3 locales consecutivos (No 4 locales)
                 model.addLessOrEqual(
-                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }), 2);
+                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i],
+                                esLocal[f + 3][i] }),
+                        3);
 
-                // Hard constraint: Máximo 2 visitantes consecutivos (No 3 visitantes)
+                // Hard constraint: Máximo 3 visitantes consecutivos (No 4 visitantes)
                 model.addGreaterOrEqual(
-                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i] }), 1);
+                        LinearExpr.sum(new Literal[] { esLocal[f][i], esLocal[f + 1][i], esLocal[f + 2][i],
+                                esLocal[f + 3][i] }),
+                        1);
             }
         }
     }

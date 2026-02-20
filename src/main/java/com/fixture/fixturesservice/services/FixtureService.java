@@ -711,6 +711,7 @@ public class FixtureService {
                         && visitante.getCategoriasHabilitadas().contains(categoriaSolicitada)
                         && visitante.getDivisionMayor().equals(liga);
 
+                // --- CASO 1: Ambos tienen la categoría ---
                 if (localTiene && visitanteTiene) {
                     String nombreCancha = p.getCancha() != null ? p.getCancha().getName() : "A DEFINIR";
 
@@ -720,21 +721,19 @@ public class FixtureService {
                             nombreCancha));
                 }
 
-                // --- CASO 2: Local es libre ---
+                // --- CASO 2: Visitante no tiene la categoría -> Local queda libre ---
                 else if (localTiene && !visitanteTiene) {
-
-                    fDto.addPartido(new PartidoDTO(
-                            "LIBRE",
-                            visitante.getNombre(),
-                            "DESCANSA"));
-                }
-
-                // --- CASO 3: Visitante es libre ---
-                else if (!localTiene && visitanteTiene) {
-
                     fDto.addPartido(new PartidoDTO(
                             local.getNombre(),
                             "LIBRE",
+                            "DESCANSA"));
+                }
+
+                // --- CASO 3: Local no tiene la categoría -> Visitante queda libre ---
+                else if (!localTiene && visitanteTiene) {
+                    fDto.addPartido(new PartidoDTO(
+                            "LIBRE",
+                            visitante.getNombre(),
                             "DESCANSA"));
                 }
             }
