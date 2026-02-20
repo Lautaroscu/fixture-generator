@@ -28,51 +28,60 @@ public class FixtureController {
     @Autowired
     private FixtureService fixtureService;
     @Autowired
+    private com.fixture.fixturesservice.services.OrToolsFixtureService orToolsFixtureService;
+    @Autowired
     private ExcelService excelService;
     @Autowired
     private DataInitializer dataInitializer;
-
 
     @GetMapping("/generar")
     public ResponseEntity<ResponseDTO> generarFixture() {
         return ResponseEntity.ok(fixtureService.generar());
     }
-    @GetMapping
-    public ResponseEntity<List<FechaDTO>> obtenerFixture(@RequestParam Liga liga ,  @RequestParam Categoria categoria) {
-        return ResponseEntity.ok(fixtureService.obtenerFixturePorCategoria(liga , categoria));
+
+    @GetMapping("/generar-ortools")
+    public ResponseEntity<ResponseDTO> generarFixtureOrTools() {
+        return ResponseEntity.ok(orToolsFixtureService.generarConOrTools());
     }
+
+    @GetMapping
+    public ResponseEntity<List<FechaDTO>> obtenerFixture(@RequestParam Liga liga, @RequestParam Categoria categoria) {
+        return ResponseEntity.ok(fixtureService.obtenerFixturePorCategoria(liga, categoria));
+    }
+
     @GetMapping("/equipos")
     public ResponseEntity<List<EquipoDTO>> obtenerFixture() {
         return ResponseEntity.ok(fixtureService.equipos());
     }
+
     @GetMapping("/exportar")
-    public ResponseEntity<byte[]> exportarFixture(@RequestParam Liga liga , @RequestParam Categoria categoria) throws IOException {
-        List<FechaDTO> fechas = fixtureService.obtenerFixturePorCategoria(liga , categoria);
+    public ResponseEntity<byte[]> exportarFixture(@RequestParam Liga liga, @RequestParam Categoria categoria)
+            throws IOException {
+        List<FechaDTO> fechas = fixtureService.obtenerFixturePorCategoria(liga, categoria);
         byte[] excelContent = excelService.generarExcelFixture(fechas);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=fixture_liga_" + liga + ".xlsx")
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(excelContent);
     }
-
-
-
 
     @GetMapping("/update-db")
     public ResponseEntity<ResponseDTO> updateDb() throws IOException {
         try {
             dataInitializer.initDesdeJson();
-            ResponseDTO responseDTO = new ResponseDTO("Base cargada correctamente" , true);
+            ResponseDTO responseDTO = new ResponseDTO("Base cargada correctamente", true);
             return ResponseEntity.ok(responseDTO);
-        }catch (IOException e) {
-            ResponseDTO responseDTO = new ResponseDTO(e.getMessage() , false);
+        } catch (IOException e) {
+            ResponseDTO responseDTO = new ResponseDTO(e.getMessage(), false);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseDTO);
         }
 
     }
+
     @GetMapping("/ping")
     public ResponseEntity<ResponseDTO> ping() {
-            return ResponseEntity.ok(new ResponseDTO("pong" , true));
+        return ResponseEntity.ok(new ResponseDTO("pong", true));
 
     }
 }

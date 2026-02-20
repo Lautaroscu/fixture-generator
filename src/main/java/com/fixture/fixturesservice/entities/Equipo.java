@@ -40,11 +40,17 @@ public class Equipo {
     private Club club;
     @Enumerated(EnumType.STRING)
     private Liga divisionMayor;
+
+    public Liga getLiga() {
+        return divisionMayor;
+    }
+
     @Enumerated(EnumType.STRING)
     private DiaJuego diaDeJuego;
 
     // Constructor para JPA
-    public Equipo() {}
+    public Equipo() {
+    }
 
     public Equipo(String nombre) {
         this.nombre = nombre;
@@ -71,6 +77,5 @@ public class Equipo {
         this.usoQuiebre = e.isUsoQuiebre();
         this.totalPartidosLocal = e.getTotalPartidosLocal();
     }
-
 
 }
