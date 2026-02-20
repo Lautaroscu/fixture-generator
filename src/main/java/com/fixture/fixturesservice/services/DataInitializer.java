@@ -47,13 +47,14 @@ public class DataInitializer {
         InputStream is = new ClassPathResource("data/equipos.json").getInputStream();
         EquiposConfig config = mapper.readValue(is, EquiposConfig.class);
 
+        // 1. ACÁ AGREGAMOS LOS BLOQUES FEMENINOS
         Map<Bloque, List<String>> definicionBloques = Map.of(
                 Bloque.MAYORES, List.of("primera", "reserva"),
                 Bloque.JUVENILES, List.of("quinta", "sexta", "septima", "octava"),
                 Bloque.INFANTILES, List.of("novena", "decima", "undecima"),
+                // ¡IMPORTANTE! Agregar esto para que lea el femenino
                 Bloque.FEM_MAYORES, List.of("femenino_primera", "femenino_sub16"),
-                Bloque.FEM_MENORES, List.of("femenino_sub14", "femenino_sub12")
-        );
+                Bloque.FEM_MENORES, List.of("femenino_sub14", "femenino_sub12"));
 
         for (EquipoConfig ec : config.equipos) {
             Cancha cancha = (Cancha) canchaRepository.findByName(ec.estadioLocal)
@@ -64,8 +65,10 @@ public class DataInitializer {
                 canchaRepository.save(cancha);
             }
 
+            // 1. Definimos cuál es la entidad "Club" real en la Base de Datos
             String nombreClubBD = (ec.clubPadre != null && !ec.clubPadre.isEmpty()) ? ec.clubPadre : ec.nombre;
 
+            // 2. Buscamos o creamos el Club unificado
             Club club = clubRepo.findByNombre(nombreClubBD).orElseGet(() -> {
                 Club nuevoClub = new Club();
                 nuevoClub.setNombre(nombreClubBD);
@@ -73,12 +76,14 @@ public class DataInitializer {
                 return clubRepo.save(nuevoClub);
             });
 
+            // Iteramos sobre TODOS los bloques (Masc y Fem)
             for (Map.Entry<Bloque, List<String>> def : definicionBloques.entrySet()) {
                 Bloque tipoBloque = def.getKey();
                 List<String> categoriasDelBloque = def.getValue();
 
                 Set<Categoria> habilitadas = categoriasDelBloque.stream()
-                        .filter(catKey -> ec.categorias.containsKey(catKey) && Boolean.TRUE.equals(ec.categorias.get(catKey)))
+                        .filter(catKey -> ec.categorias.containsKey(catKey)
+                                && Boolean.TRUE.equals(ec.categorias.get(catKey)))
                         .map(catKey -> {
                             if (catKey.startsWith("femenino_")) {
                                 return Categoria.valueOf("FEM_" + catKey.replace("femenino_", "").toUpperCase());
@@ -90,6 +95,8 @@ public class DataInitializer {
                 if (!habilitadas.isEmpty()) {
                     Equipo equipo = new Equipo();
 
+                    // 3. Acá está la clave: El equipo conserva su nombre derivado para el Frontend
+                    // Ej: "Loma Negra Inferiores", pero está atado lógicamente al Club "Loma Negra"
                     equipo.setNombre(ec.nombre);
                     equipo.setClub(club);
 
@@ -99,16 +106,16 @@ public class DataInitializer {
                     // --- ASIGNACIÓN INTELIGENTE DE LIGA ---
                     if (tipoBloque == Bloque.FEM_MAYORES || tipoBloque == Bloque.FEM_MENORES) {
                         equipo.setDivisionMayor(Liga.A);
-                    }
-                    else if (tipoBloque == Bloque.INFANTILES && ec.divisionInfantiles != null && !ec.divisionInfantiles.isEmpty()) {
+                    } else if (tipoBloque == Bloque.INFANTILES && ec.divisionInfantiles != null
+                            && !ec.divisionInfantiles.isEmpty()) {
                         equipo.setDivisionMayor(Liga.valueOf(ec.divisionInfantiles.toUpperCase()));
-                    }
-                    else {
+                    } else {
                         equipo.setDivisionMayor(Liga.valueOf(ec.divisionMayor.toUpperCase()));
                     }
 
                     // Asignamos días de juego
-                    if (tipoBloque == Bloque.JUVENILES || tipoBloque == Bloque.FEM_MAYORES || tipoBloque == Bloque.FEM_MENORES) {
+                    if (tipoBloque == Bloque.JUVENILES || tipoBloque == Bloque.FEM_MAYORES
+                            || tipoBloque == Bloque.FEM_MENORES) {
                         equipo.setDiaDeJuego(DiaJuego.SABADO);
                     } else {
                         equipo.setDiaDeJuego(DiaJuego.DOMINGO);
@@ -118,10 +125,12 @@ public class DataInitializer {
             }
         }
     }
+
     private void deleteAll() {
         partidoRepository.deleteAllInBatch();
         fechaRepository.deleteAllInBatch();
         equipoRepo.deleteAllInBatch();
+
         clubRepo.deleteAllInBatch();
         canchaRepository.deleteAllInBatch();
     }
