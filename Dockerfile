@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jdk-jammy AS buld
+FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /app
 
 COPY .mvn/ .mvn
