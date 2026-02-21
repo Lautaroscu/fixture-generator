@@ -73,6 +73,7 @@ public class DataInitializer {
                 Club nuevoClub = new Club();
                 nuevoClub.setNombre(nombreClubBD);
                 nuevoClub.setSede(cancha);
+                nuevoClub.setLocalidad(ec.localidad);
                 return clubRepo.save(nuevoClub);
             });
 

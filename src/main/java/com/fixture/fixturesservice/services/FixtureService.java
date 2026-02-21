@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,10 +20,13 @@ public class FixtureService {
     private EquipoRepository equipoRepository;
     @Autowired
     private FechaRepository fechaRepository;
+    private final Map<String, JobStatusDTO> jobTracker = new ConcurrentHashMap<>();
 
     // 2. ACTUALIZAR GENERAR() para incluir FEMENINO
     @Transactional
-    public ResponseDTO generar() {
+    public ResponseDTO generar(String jobId) {
+        jobTracker.put(jobId, new JobStatusDTO("PROCESSING", "El motor OR-Tools está calculando el fixture..."));
+
         fechaRepository.deleteAll();
         List<Equipo> todosLosEquipos = equipoRepository.findAll();
 
@@ -45,6 +49,10 @@ public class FixtureService {
             return new ResponseDTO("Fixture MASCULINO y FEMENINO generado con éxito.", true);
         }
         return new ResponseDTO("Sabado: " + exitoSabado + " | Domingo: " + exitoDomingo, false);
+    }
+
+    public JobStatusDTO obtenerEstadoTrabajo(String jobId) {
+        return jobTracker.getOrDefault(jobId, new JobStatusDTO("NOT_FOUND", "El trabajo no existe."));
     }
 
     // 3. ACTUALIZAR LA LÓGICA DE PRIORIDAD (Aquí está la clave de "Prioridad
@@ -289,13 +297,17 @@ public class FixtureService {
     private boolean validarRestriccionesEspecíficas(Equipo loc, Equipo vis, EstadoFecha estado,
             GeneracionContexto ctx) {
         // 1. CUPO AYACUCHO (Máx 2 locales)
-        if (esDeAyacucho(loc)) {
-            long localesAyacucho = estado.getClubesLocales().stream()
-                    .map(id -> ctx.equipoCache.get(id))
-                    .filter(e -> e != null && esDeAyacucho(e))
+        // 1. Verificamos si el club del equipo que evaluamos es de Ayacucho
+        if (esDeAyacucho(loc.getClub())) {
+
+            long clubesLocalesAyacucho = estado.getClubesLocales().stream()
+                    .map(clubId -> ctx.clubCache.get(clubId)) // IMPORTANTE: Caché de CLUBES
+                    .filter(club -> esDeAyacucho(club)) // Reutiliza la misma lógica exacta
                     .count();
-            if (localesAyacucho >= 2)
-                return false;
+
+            if (clubesLocalesAyacucho >= 2) {
+                return false; // Cupo máximo alcanzado
+            }
         }
 
         // 2. SEGURIDAD JUARENSE (Si Juarense es Local -> Alumni Visitante)
@@ -306,7 +318,7 @@ public class FixtureService {
             // "Alumni Visitante")
             // Buscamos si Alumni está en clubesLocales
             Integer idAlumni = estado.getClubesLocales().stream()
-                    .map(id -> ctx.equipoCache.get(id))
+                    .map(id -> ctx.clubCache.get(id))
                     .filter(e -> e != null && e.getNombre().equalsIgnoreCase("Alumni"))
                     .findFirst()
                     .map(e -> e.getId())
@@ -319,7 +331,7 @@ public class FixtureService {
         // Local)
         if (loc.getNombre().equalsIgnoreCase("Alumni")) {
             Integer idJuarense = estado.getClubesLocales().stream()
-                    .map(id -> ctx.equipoCache.get(id))
+                    .map(id -> ctx.clubCache.get(id))
                     .filter(e -> e != null && e.getNombre().equalsIgnoreCase("Juarense"))
                     .findFirst()
                     .map(e -> e.getId())
@@ -353,12 +365,10 @@ public class FixtureService {
         return espejoDe1 != null && espejoDe1.equals(e2Id);
     }
 
-    private boolean esDeAyacucho(Equipo e) {
+    private boolean esDeAyacucho(Club e) {
         if (e == null)
             return false;
-        String nombre = e.getNombre().toUpperCase();
-        return nombre.contains("AYACUCHO") || nombre.contains("SARMIENTO") || nombre.contains("ESTRADA")
-                || nombre.contains("BOTAFOGO");
+        return "AYACUCHO".equalsIgnoreCase(e.getLocalidad());
     }
 
     private void aplicarLocalia(Equipo loc, Equipo vis, Partido p, EstadoFecha estado) {
@@ -766,6 +776,7 @@ public class FixtureService {
 
         // Cache optimization
         Map<Integer, Equipo> equipoCache = new HashMap<>();
+        Map<Integer, Club> clubCache = new HashMap<>();
         Map<String, Integer> nombreIdCache = new HashMap<>();
         Map<Integer, Integer> espejos = new HashMap<>(); // ID -> ID
 
@@ -774,6 +785,8 @@ public class FixtureService {
             for (Equipo e : todosLosEquipos) {
                 equipoCache.put(e.getId(), e);
                 nombreIdCache.put(e.getNombre().toUpperCase(), e.getId());
+                clubCache.putIfAbsent(e.getClub().getId(), e.getClub());
+                System.out.println(clubCache.keySet());
             }
             // Configurar Espejos
             configurarEspejo("INDEPENDIENTE FEMENINO", "INDEPENDIENTE (ROJO)");

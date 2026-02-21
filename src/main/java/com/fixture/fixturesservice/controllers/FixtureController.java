@@ -40,7 +40,8 @@ public class FixtureController {
 
     @GetMapping("/generar")
     public ResponseEntity<ResponseDTO> generarFixture() {
-        return ResponseEntity.ok(fixtureService.generar());
+        String jobId = UUID.randomUUID().toString();
+        return ResponseEntity.ok(fixtureService.generar(jobId));
     }
 
     @GetMapping("/generar-ortools")
@@ -60,7 +61,7 @@ public class FixtureController {
 
     @GetMapping("/status/{jobId}")
     public ResponseEntity<JobStatusDTO> consultarEstado(@PathVariable String jobId) {
-        JobStatusDTO status = orToolsService.obtenerEstadoTrabajo(jobId);
+        JobStatusDTO status = fixtureService.obtenerEstadoTrabajo(jobId);
         return ResponseEntity.ok(status);
     }
 

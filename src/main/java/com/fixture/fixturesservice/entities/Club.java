@@ -1,13 +1,9 @@
 package com.fixture.fixturesservice.entities;
 
-import com.fixture.fixturesservice.enums.Categoria;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Setter
@@ -22,4 +18,5 @@ public class Club {
     private Cancha sede;
     @OneToMany(mappedBy = "club")
     private List<Equipo> equipos;
+    private String localidad;
 }

@@ -2,6 +2,7 @@
   "equipos": [
     {
       "nombre": "Loma Negra",
+      "localidad": "Villa Cacique",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -43,6 +44,7 @@
     },
     {
       "nombre": "Independiente",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -75,6 +77,7 @@
     },
     {
       "nombre": "Juventud Unida",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -90,6 +93,7 @@
     },
     {
       "nombre": "Juventud Unida Fem (Blanco)",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "femenino_primera": true,
@@ -115,6 +119,7 @@
     },
     {
       "nombre": "Juventud Unida Infantiles",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "novena": true,
@@ -127,6 +132,7 @@
     },
     {
       "nombre": "Santamarina",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -159,6 +165,7 @@
     },
     {
       "nombre": "Argentino",
+      "localidad": "Benito Juarez",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -187,6 +194,7 @@
     },
     {
       "nombre": "UNICEN",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -205,6 +213,7 @@
     },
     {
       "nombre": "San José",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -233,6 +242,7 @@
     },
     {
       "nombre": "San José Femenino",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "femenino_primera": true,
@@ -246,6 +256,7 @@
     },
     {
       "nombre": "Ferrocarril Sud",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -278,6 +289,7 @@
     },
     {
       "nombre": "Gimnasia y Esgrima",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -310,6 +322,7 @@
     },
     {
       "nombre": "Juarense",
+      "localidad": "Benito Juarez",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -342,6 +355,7 @@
     },
     {
       "nombre": "Excursionistas",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -374,6 +388,7 @@
     },
     {
       "nombre": "Deportivo Tandil",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -402,6 +417,7 @@
     },
     {
       "nombre": "Velense",
+      "localidad": "Vela",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -430,6 +446,7 @@
     },
     {
       "nombre": "Independiente (rojo)",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": false,
@@ -448,6 +465,7 @@
     },
     {
       "nombre": "Unión y Progreso",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -466,6 +484,7 @@
     },
     {
       "nombre": "Oficina",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -484,6 +503,7 @@
     },
     {
       "nombre": "Defensores del Cerro",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -495,6 +515,7 @@
     },
     {
       "nombre": "Alumni",
+      "localidad": "Benito Juarez",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -523,6 +544,7 @@
     },
     {
       "nombre": "Grupo Universitario",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -541,6 +563,7 @@
     },
     {
       "nombre": "SARMIENTO (AYACUCHO)",
+      "localidad": "Ayacucho",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -569,6 +592,7 @@
     },
     {
       "nombre": "DEFENSORES DE AYACUCHO",
+      "localidad": "Ayacucho",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -597,6 +621,7 @@
     },
     {
       "nombre": "DEPORTIVO RAUCH",
+      "localidad": "Rauch",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -608,6 +633,7 @@
     },
     {
       "nombre": "ATENEO ESTRADA",
+      "localidad": "Ayacucho",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -636,6 +662,7 @@
     },
     {
       "nombre": "ATLETICO AYACUCHO",
+      "localidad": "Ayacucho",
       "divisionMayor": "A",
       "categorias": {
         "primera": true,
@@ -678,6 +705,7 @@
     },
     {
       "nombre": "SAN LORENZO (RAUCH)",
+      "localidad": "Rauch",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -720,6 +748,7 @@
     },
     {
       "nombre": "BOTAFOGO F.C.",
+      "localidad": "Rauch",
       "divisionMayor": "B",
       "categorias": {
         "primera": true,
@@ -748,6 +777,7 @@
     },
     {
       "nombre": "Ferro Azul",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": false,
@@ -766,6 +796,7 @@
     },
     {
       "nombre": "El Potrero",
+      "localidad": "Tandil",
       "divisionMayor": "A",
       "categorias": {
         "femenino_primera": true,
@@ -779,6 +810,7 @@
     },
     {
       "nombre": "Herederos",
+      "localidad": "Tandil",
       "divisionMayor": "B",
       "categorias": {
         "primera": false,

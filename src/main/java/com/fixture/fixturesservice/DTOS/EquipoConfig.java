@@ -5,6 +5,7 @@ import java.util.Map;
 
 public class EquipoConfig {
     public String nombre;
+    public String localidad;
     public String divisionMayor; // "A" | "B"
     public Map<String, Boolean> categorias;
     public boolean estadioPropio;
