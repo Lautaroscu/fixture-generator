@@ -114,7 +114,9 @@ public class DataInitializer {
                     }
 
                     // Asignamos días de juego
-                    if (tipoBloque == Bloque.JUVENILES || tipoBloque == Bloque.FEM_MAYORES
+                    if (equipo.getNombre().equals("Loma Negra Femenino")) {
+                        equipo.setDiaDeJuego(DiaJuego.DOMINGO);
+                    } else if (tipoBloque == Bloque.JUVENILES || tipoBloque == Bloque.FEM_MAYORES
                             || tipoBloque == Bloque.FEM_MENORES) {
                         equipo.setDiaDeJuego(DiaJuego.SABADO);
                     } else {

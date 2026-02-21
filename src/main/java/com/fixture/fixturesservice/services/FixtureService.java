@@ -302,8 +302,15 @@ public class FixtureService {
         if (loc.getNombre().equalsIgnoreCase("Juarense")) {
             // Verificar si Alumni ya es local en esta fecha (lo cual rompería la regla
             // "Alumni Visitante")
+            // Buscamos si Alumni ya es local en esta fecha (lo cual rompería la regla
+            // "Alumni Visitante")
             // Buscamos si Alumni está en clubesLocales
-            Integer idAlumni = ctx.nombreIdCache.get("ALUMNI");
+            Integer idAlumni = estado.getClubesLocales().stream()
+                    .map(id -> ctx.equipoCache.get(id))
+                    .filter(e -> e != null && e.getNombre().equalsIgnoreCase("Alumni"))
+                    .findFirst()
+                    .map(e -> e.getId())
+                    .orElse(null);
             if (idAlumni != null && estado.getClubesLocales().contains(idAlumni)) {
                 return false;
             }
@@ -311,7 +318,12 @@ public class FixtureService {
         // Viceversa: Si Alumni es Local, Juarense debe ser Visitante (no puede ser
         // Local)
         if (loc.getNombre().equalsIgnoreCase("Alumni")) {
-            Integer idJuarense = ctx.nombreIdCache.get("JUARENSE");
+            Integer idJuarense = estado.getClubesLocales().stream()
+                    .map(id -> ctx.equipoCache.get(id))
+                    .filter(e -> e != null && e.getNombre().equalsIgnoreCase("Juarense"))
+                    .findFirst()
+                    .map(e -> e.getId())
+                    .orElse(null);
             if (idJuarense != null && estado.getClubesLocales().contains(idJuarense)) {
                 return false;
             }
