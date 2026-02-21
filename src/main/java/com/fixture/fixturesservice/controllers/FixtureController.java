@@ -61,7 +61,7 @@ public class FixtureController {
 
     @GetMapping("/status/{jobId}")
     public ResponseEntity<JobStatusDTO> consultarEstado(@PathVariable String jobId) {
-        JobStatusDTO status = fixtureService.obtenerEstadoTrabajo(jobId);
+        JobStatusDTO status = orToolsService.obtenerEstadoTrabajo(jobId);
         return ResponseEntity.ok(status);
     }
 
